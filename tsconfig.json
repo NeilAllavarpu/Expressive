@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "outDir": "./built",
+    "sourceMap": true,
+    "strict": true,
+    "strictNullChecks": true,
+    "exactOptionalPropertyTypes": true
+  },
+  "include": [
+    "./src/**/*.ts"
+  ],
+  "lib": [
+    "node"
+  ]
+}
