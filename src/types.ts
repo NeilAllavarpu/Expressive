@@ -23,76 +23,109 @@ export enum SemanticType {
 }
 
 export enum ValueType {
-  Literal = "literal",
+  Integer = "integer",
+  String = "string",
   Variable = "variable",
+  Function = "function",
 }
 
 export enum VariableType {
-  ui64 = "ui64",
+  int = "int",
+  str = "str",
+  func = "func",
+  UNDEF = "UNDEF_DNU",
 }
 
 export enum MiscType {
-  Function = "function",
   Invocation = "invocation",
 }
 
 export type TokenType = OperatorType | SemanticType | ValueType | VariableType;
 
-export type LiteralToken = {
-  type: ValueType.Literal;
-  value: number;
+export type IntegerToken = {
+  type: ValueType.Integer;
+  integer: number;
+};
+export type StringToken = {
+  type: ValueType.String;
+  string: string;
 };
 export type VariableToken = {
   type: ValueType.Variable;
   label: string;
 };
-export type Token = LiteralToken | VariableToken | {
+export type Token = IntegerToken | StringToken | VariableToken | {
   type: Exclude<TokenType, ValueType>;
 };
 
 export type ExpressionType = OperatorType | ValueType | VariableType;
-export type LiteralExpression = {
-  type: ValueType.Literal;
+
+export type IntegerExpression = {
+  type: ValueType.Integer;
   value: number;
+  value_type: VariableType.int;
+};
+export type StringExpression = {
+  type: ValueType.String;
+  index: number;
+  string: string;
+  value_type: VariableType.str;
 };
 export type VariableExpression = {
   type: ValueType.Variable;
-  index: number;
   label: string;
+  value_type: VariableType;
 };
 export type TypeExpression = {
   type: VariableType;
+  value_type: VariableType;
 };
 export type AssignmentExpression = {
   type: OperatorType.Assignment;
   variable: VariableExpression;
   value: Expression;
+  value_type: VariableType;
 };
 export type DeclarationExpression = {
   type: OperatorType.Colon;
   variable: VariableExpression;
   variable_type: TypeExpression;
+  value_type: VariableType;
 };
 export type FunctionExpression = {
-  type: MiscType.Function;
+  type: ValueType.Function;
   func: number;
+  value_type: VariableType.func;
 };
 export type InvocationExpression = {
   type: MiscType.Invocation;
   func: Expression;
   arguments: Expression[];
+  value_type: VariableType;
 };
 type SpecificTypes = OperatorType.Assignment | OperatorType.Colon;
 export type BinaryExpression = {
   type: Exclude<OperatorType, SpecificTypes>;
   arguments: Expression[];
+  value_type: VariableType;
 };
 
-export type Expression = LiteralExpression | VariableExpression | TypeExpression | AssignmentExpression | DeclarationExpression | FunctionExpression | InvocationExpression | BinaryExpression;
+export type Expression = IntegerExpression | StringExpression | VariableExpression | TypeExpression | AssignmentExpression | DeclarationExpression | FunctionExpression | InvocationExpression | BinaryExpression;
+
+export type VariableInfo = {
+  index: number;
+  type: VariableType;
+};
 
 export type Func = {
   body: Expression;
   index: number;
+  variables: Record<string, VariableInfo>;
   num_variables: number;
   parameters: VariableExpression[];
+};
+
+export type Prog = {
+  functions: Func[];
+  strings: Record<string, number>;
 };

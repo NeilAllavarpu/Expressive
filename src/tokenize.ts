@@ -37,6 +37,13 @@ export const tokenize = (program: string) => {
         "type": token_type,
       });
       position += token_type.length;
+    } else if (program.charAt(position) == "\"") {
+      const closing_quote_index = program.indexOf("\"", position + 1);
+      tokens.push({
+        "string": program.substring(position + 1, closing_quote_index),
+        "type": ValueType.String,
+      });
+      position = closing_quote_index + 1;
     } else if (is_alphabetic(program, position)) {
       let identifier_length = 1;
       while (is_alphanumeric(program, position + identifier_length)) {
@@ -56,8 +63,8 @@ export const tokenize = (program: string) => {
       }
 
       tokens.push({
-        "type": ValueType.Literal,
-        "value": value,
+        "integer": value,
+        "type": ValueType.Integer,
       });
     } else if (is_whitespace(program, position)) {
       ++position;
