@@ -12,6 +12,7 @@ export enum OperatorType {
   Mult = "*",
   Semicolon = ";",
   Subtraction = "-",
+  And = "&&",
 }
 
 export enum SemanticType {
@@ -115,6 +116,7 @@ export type Expression = IntegerExpression | StringExpression | VariableExpressi
 export type VariableInfo = {
   index: number;
   type: VariableType;
+  captured: boolean;
 };
 
 export type Func = {
@@ -122,10 +124,11 @@ export type Func = {
   index: number;
   variables: Record<string, VariableInfo>;
   num_variables: number;
+  bound: string[];
   parameters: VariableExpression[];
 };
 
 export type Prog = {
-  functions: Func[];
+  functions: Record<number, Func>;
   strings: Record<string, number>;
 };

@@ -10,7 +10,7 @@ type Context = Pick<Func, "body" | "parameters" | "index">;
 
 type ParseContext = {
   index: number;
-  contexts: Context[];
+  contexts: (ParseContext & Context)[];
   body: Expression;
 };
 
@@ -21,7 +21,7 @@ export const parse_tokens = (tokens: Token[], index = 0, min_bind = 0): ParseCon
   }
 
   let expression: Expression;
-  let contexts: Context[] = [];
+  let contexts: ParseContext["contexts"] = [];
 
   const curr_token = tokens[index];
   switch (curr_token.type) {
@@ -64,7 +64,6 @@ export const parse_tokens = (tokens: Token[], index = 0, min_bind = 0): ParseCon
         console.error("ERROR: Missing closing parenthesis");
         exit(1);
       }
-      ++index;
       break;
     }
     case SemanticType.LeftBrace: {
@@ -81,7 +80,6 @@ export const parse_tokens = (tokens: Token[], index = 0, min_bind = 0): ParseCon
           exit(1);
         }
         return {
-          "index": -1,
           "label": variable.label,
           "type": ValueType.Variable,
           "value_type": VariableType.UNDEF,
@@ -94,8 +92,9 @@ export const parse_tokens = (tokens: Token[], index = 0, min_bind = 0): ParseCon
       }
       const parsed = parse_tokens(tokens, index + 1);
       index = parsed.index;
-      contexts = [...contexts, ...parsed.contexts, {
+      contexts = [...contexts, {
         "body": parsed.body,
+        "contexts": parsed.contexts,
         index,
         parameters,
       },];
@@ -132,6 +131,8 @@ export const parse_tokens = (tokens: Token[], index = 0, min_bind = 0): ParseCon
           }
           args = [...args, parsed.body,];
         }
+      } else {
+        ++index;
       }
       expression = {
         "arguments": args,
@@ -207,28 +208,47 @@ export const parse_tokens = (tokens: Token[], index = 0, min_bind = 0): ParseCon
 type MapExpresionReturn = {
   variable_map: Record<string, VariableInfo>;
   num_variables: number;
+  bound_variables: string[];
 };
 
-const map_expression = (expression: Expression, variable_map: Record<string, VariableInfo> = {}, num_variables = 0): MapExpresionReturn => {
+const map_expression = (expression: Expression, variable_map: Record<string, VariableInfo> = {}, num_variables = 0, bound_variables:string[] = []): MapExpresionReturn => {
   switch (expression.type) {
     case OperatorType.Colon: {
       const {variable, variable_type,} = expression;
       variable_map[variable.label] = {
+        "captured": false,
         "index": num_variables,
         "type": variable_type.type,
       };
       return {
+        bound_variables,
         "num_variables": num_variables + 1,
         variable_map,
       };
     }
-    case OperatorType.Assignment:
-      return map_expression(expression.value, variable_map, num_variables);
+    case OperatorType.Assignment: {
+       ({bound_variables, variable_map, num_variables} = map_expression(expression.variable, variable_map, num_variables, bound_variables));
+      return map_expression(expression.value, variable_map, num_variables, bound_variables);
+    }
     case ValueType.Variable:
+      if (variable_map.hasOwnProperty(expression.label) || bound_variables.includes(expression.label)) {
+        return {
+          bound_variables,
+          num_variables,
+          variable_map,
+        };
+      } else {
+        return {
+          "bound_variables": [...bound_variables, expression.label,],
+          num_variables,
+          variable_map,
+        };
+      }
     case ValueType.Integer:
     case ValueType.String:
     case ValueType.Function:
       return {
+        bound_variables,
         num_variables,
         variable_map,
       };
@@ -240,17 +260,19 @@ const map_expression = (expression: Expression, variable_map: Record<string, Var
       exit(1);
       break;
     case MiscType.Invocation: {
-      const mapped = map_expression(expression.func, variable_map, num_variables);
-      num_variables = mapped.num_variables;
-      variable_map = mapped.variable_map;
+      ({bound_variables, num_variables, variable_map} = map_expression(expression.func, variable_map, num_variables, bound_variables));
     }
       // fall through
     default:
       return expression.arguments.reduce((data, expression) =>
-        map_expression(expression, data.variable_map, data.num_variables), {
-        num_variables,
-        variable_map,
-      });
+        map_expression(expression,
+                       data.variable_map,
+                       data.num_variables,
+                       data.bound_variables), {
+          bound_variables,
+          num_variables,
+          variable_map,
+        });
   }
 };
 
@@ -303,6 +325,7 @@ const map_context = (context: Context) => {
   const map: Record<string, VariableInfo> = context.parameters.reduce((mapped, arg, i) => ({
     ...mapped,
     [arg.label]: {
+      "captured": false,
       "index": i,
       "type": VariableType.int,
     },
@@ -316,12 +339,14 @@ const map_context = (context: Context) => {
 const typify = (expression: Expression, variables: Func["variables"]) => {
   switch (expression.type) {
     case ValueType.String:
-    case OperatorType.Colon:
     case ValueType.Integer:
     case VariableType.str:
     case VariableType.int:
     case VariableType.func:
     case VariableType.UNDEF:
+      break;
+    case OperatorType.Colon:
+      variables[expression.variable.label].type = expression.variable_type.type;
       break;
     case ValueType.Function:
       expression.value_type = VariableType.func;
@@ -331,7 +356,7 @@ const typify = (expression: Expression, variables: Func["variables"]) => {
       typify(expression.value, variables);
       if (expression.variable.value_type !== expression.value.value_type) {
         console.error("ERROR: type of variable does not match type of expression in assignment!");
-        exit(1);
+        // exit(1);
       }
       expression.value_type = expression.variable.value_type;
       break;
@@ -342,7 +367,7 @@ const typify = (expression: Expression, variables: Func["variables"]) => {
       typify(expression.func, variables);
       if (expression.func.value_type !== VariableType.func) {
         console.error("ERROR: non-function attempting to be invoked!");
-        exit(1);
+        // exit(1);
       }
       // fall through
     }
@@ -354,7 +379,7 @@ const typify = (expression: Expression, variables: Func["variables"]) => {
         !expression.arguments.every(({value_type,}) =>
           value_type === expression.arguments[0].value_type)) {
         console.error("ERROR: mismatch of types in operation!");
-        exit(1);
+        // exit(1);
       }
       if (expression.type !== MiscType.Invocation) {
         expression.value_type = expression.arguments[0].value_type;
@@ -362,39 +387,52 @@ const typify = (expression: Expression, variables: Func["variables"]) => {
   }
 };
 
+const parse_tree = (tree: ParseContext & Context, parent_vars:Record<string, VariableInfo> = {}): Func[] => {
+  let {num_variables, variable_map, bound_variables,} = map_context(tree);
+
+  bound_variables.forEach((label, i) => {
+    variable_map[label] = {
+      "captured": true,
+      "index": num_variables + i,
+      "type": VariableType.int,
+    };
+    parent_vars[label].captured = true;
+  });
+  num_variables += bound_variables.length;
+  typify(tree.body, variable_map);
+  const f: Func = {
+    ...tree,
+    "bound": bound_variables,
+    num_variables,
+    "variables": variable_map,
+  };
+  return [f, ...tree.contexts.flatMap((subtree) => parse_tree(subtree, variable_map)),];
+};
+
 export const parse = (tokens: Token[]): Prog => {
   const parsed = parse_tokens(tokens);
-  const functions: Func[] = parsed.contexts.map((context) => {
-    const {num_variables, variable_map,} = map_context(context);
-    return {
-      ...context,
-      num_variables,
-      "variables": variable_map,
-    };
-  });
-  functions.forEach((func) => {
-    typify(func.body, func.variables);
-  });
-  const string_map =
-    [...parsed.contexts.map(({body,}) => body),
-      parsed.body,]
-    .reduce(
-        (r, expression) =>
-          indexify_strings(expression, r.string_map, r.num_strings),
-        {"num_strings": 0, "string_map": {},});
-  const {num_variables, variable_map,} = map_expression(parsed.body);
-  typify(parsed.body, variable_map);
+  const main:  ParseContext & Context =  {
+    "body": parsed.body,
+    "contexts": parsed.contexts,
+    "index": 0,
+    "parameters": [],
+  };
+
+  const functions: Func[] = parse_tree(main);
+
+
+  const string_map = {};
+    // [...parsed.contexts.map(({body,}) => body),
+    //   parsed.body,]
+    // .reduce(
+    //     (r, expression) =>
+    //       indexify_strings(expression, r.string_map, r.num_strings),
+    //     {"num_strings": 0, "string_map": {},});
   return {
-    "functions": [
-      {
-        "body": parsed.body,
-        "index": 0,
-        num_variables,
-        "parameters": [],
-        "variables": variable_map,
-      },
-      ...functions,
-    ],
-    "strings": string_map.string_map,
+    "functions": functions.reduce((map, func) => ({
+      ...map,
+      [func.index]: func,
+    }), {}),
+    "strings": string_map,
   };
 };

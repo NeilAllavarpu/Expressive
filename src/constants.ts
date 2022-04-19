@@ -35,4 +35,9 @@ export const OperatorMap: Record<OperatorType, Operator> = {
     "operator": OperatorType.Assignment,
     "right_bind": 4,
   },
+  [OperatorType.And]: {
+    "left_bind": 5,
+    "operator": OperatorType.And,
+    "right_bind": 6,
+  },
 };
