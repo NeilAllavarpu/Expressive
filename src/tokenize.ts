@@ -1,4 +1,10 @@
-import {OperatorType, SemanticType, Token, ValueType, VariableType,} from "./types";
+import {
+  OperatorType,
+  SemanticType,
+  Token,
+  ValueType,
+  VariableType,
+} from "./types";
 
 const is_numeric = (string: string, position: number) => {
   const code = string.charCodeAt(position);
@@ -7,13 +13,14 @@ const is_numeric = (string: string, position: number) => {
 
 const is_alphabetic = (string: string, position: number) => {
   const code = string.charCodeAt(position);
-  return ("a".charCodeAt(0) <= code && code <= "z".charCodeAt(0)) ||
-         ("A".charCodeAt(0) <= code && code <= "Z".charCodeAt(0));
+  return (
+    ("a".charCodeAt(0) <= code && code <= "z".charCodeAt(0)) ||
+    ("A".charCodeAt(0) <= code && code <= "Z".charCodeAt(0))
+  );
 };
 
-const is_alphanumeric = (string: string, position: number) => {
-  return is_alphabetic(string, position) || is_numeric(string, position);
-};
+const is_alphanumeric = (string: string, position: number) =>
+  is_alphabetic(string, position) || is_numeric(string, position);
 
 const is_whitespace = (string: string, position: number) => {
   const code = string.charCodeAt(position);
@@ -29,19 +36,19 @@ export const tokenize = (program: string) => {
     ...Object.values(VariableType),
   ];
   while (position < program.length) {
-    const token_type = token_type_list.find(
-      (str) => program.startsWith(str, position)
+    const token_type = token_type_list.find((str) =>
+      program.startsWith(str, position)
     );
     if (token_type !== undefined) {
       tokens.push({
-        "type": token_type,
+        type: token_type,
       });
       position += token_type.length;
-    } else if (program.charAt(position) == "\"") {
-      const closing_quote_index = program.indexOf("\"", position + 1);
+    } else if (program.charAt(position) == '"') {
+      const closing_quote_index = program.indexOf('"', position + 1);
       tokens.push({
-        "string": program.substring(position + 1, closing_quote_index),
-        "type": ValueType.String,
+        string: program.substring(position + 1, closing_quote_index),
+        type: ValueType.String,
       });
       position = closing_quote_index + 1;
     } else if (is_alphabetic(program, position)) {
@@ -51,8 +58,8 @@ export const tokenize = (program: string) => {
       }
 
       tokens.push({
-        "label": program.substring(position, position + identifier_length),
-        "type": ValueType.Variable,
+        label: program.substring(position, position + identifier_length),
+        type: ValueType.Variable,
       });
       position += identifier_length;
     } else if (is_numeric(program, position)) {
@@ -63,13 +70,17 @@ export const tokenize = (program: string) => {
       }
 
       tokens.push({
-        "integer": value,
-        "type": ValueType.Integer,
+        integer: value,
+        type: ValueType.Integer,
       });
     } else if (is_whitespace(program, position)) {
       ++position;
     } else {
-      console.error(`Invalid character ${program.charAt(position)} (at character ${position})`);
+      console.error(
+        `Invalid character ${program.charAt(
+          position
+        )} (at character ${position})`
+      );
       ++position;
     }
   }
