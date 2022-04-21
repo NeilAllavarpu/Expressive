@@ -83,7 +83,7 @@ export const parse_tokens = (
       contexts = contexts.concat(parsed.contexts);
       if (
         index >= tokens.length ||
-        tokens[index].type != SemanticType.RightParen
+        tokens[index].type !== SemanticType.RightParen
       ) {
         console.error("ERROR: Missing closing parenthesis");
         exit(1);
@@ -95,17 +95,17 @@ export const parse_tokens = (
       const end_param_index =
         tokens
           .slice(index + 1)
-          .findIndex(({ type }) => type == SemanticType.RightBrace) +
+          .findIndex(({ type }) => type === SemanticType.RightBrace) +
         index +
         1;
-      if (end_param_index == index) {
+      if (end_param_index === index) {
         console.error("ERROR: Missing closing curly brace for parameter list");
         exit(1);
       }
       const parameters: VariableExpression[] = tokens
         .slice(index + 1, end_param_index)
         .map((variable) => {
-          if (variable.type != ValueType.Variable) {
+          if (variable.type !== ValueType.Variable) {
             console.error("ERROR: Non-parameter in parameter list");
             exit(1);
           }
@@ -118,7 +118,7 @@ export const parse_tokens = (
       index = end_param_index + 1;
       if (
         index >= tokens.length ||
-        tokens[index].type != SemanticType.LeftBrace
+        tokens[index].type !== SemanticType.LeftBrace
       ) {
         console.error("ERROR: Missing function body");
         exit(1);
@@ -136,7 +136,7 @@ export const parse_tokens = (
       ];
       if (
         index >= tokens.length ||
-        tokens[index].type != SemanticType.RightBrace
+        tokens[index].type !== SemanticType.RightBrace
       ) {
         console.error("ERROR: Missing closing brace");
         exit(1);
@@ -167,8 +167,8 @@ export const parse_tokens = (
           index = parsed.index;
           contexts = contexts.concat(parsed.contexts);
           if (
-            tokens[index].type != SemanticType.RightParen &&
-            tokens[index].type != SemanticType.Comma
+            tokens[index].type !== SemanticType.RightParen &&
+            tokens[index].type !== SemanticType.Comma
           ) {
             console.error(
               `Unexpected token ${tokens[index].type} (expected closing parenthesis or comma)`

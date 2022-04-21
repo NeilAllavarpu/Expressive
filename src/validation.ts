@@ -43,8 +43,7 @@ export const typify = (
     case MiscType.Invocation: {
       typify(expression.func, variables);
       if (expression.func.value_type !== VariableType.func) {
-        console.error("ERROR: non-function attempting to be invoked!");
-        // exit(1);
+        throw TypeError("Non-function attempting to be invoked!");
       }
       // fall through
     }
@@ -58,8 +57,7 @@ export const typify = (
           ({ value_type }) => value_type === expression.arguments[0].value_type
         )
       ) {
-        console.error("ERROR: mismatch of types in operation!");
-        // exit(1);
+        throw TypeError("ERROR: mismatch of types in operation!");
       }
       if (expression.type !== MiscType.Invocation) {
         expression.value_type = expression.arguments[0].value_type;

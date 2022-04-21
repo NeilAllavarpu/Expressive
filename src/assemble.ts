@@ -52,7 +52,7 @@ const assemble_expression = (
         // generate the arg values and load them onto the stack
         // but leave the last one in x0 (optimization)
         (expression, i, { length }) =>
-          assemble_subexpression(expression, i != length - 1)
+          assemble_subexpression(expression, i !== length - 1)
       )
       .join("") +
     // shift the last argument into the appropriate register
@@ -219,7 +219,7 @@ const set_captured = (func: Func) => {
   const heap_alloc = Object.entries(func.variables)
     .filter(([label, { captured }]) => captured && !func.bound.includes(label))
     .map(([, { index }]) => index);
-  if (heap_alloc.length == 0) {
+  if (heap_alloc.length === 0) {
     return "";
   } else {
     return dedent`
@@ -245,7 +245,7 @@ const assemble_function = (
   func: Func,
   function_map: Record<number, Func>
 ) => dedent`
-  ${func.index == 0 ? "main" : `function${func.index}`}:
+  ${func.index === 0 ? "main" : `function${func.index}`}:
   stp  x29, x30, [sp, #-16]!
   mov  x29, sp
   sub  sp, sp, #${func.num_variables * 16}

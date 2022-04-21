@@ -23,7 +23,7 @@ import { typify } from "./validation";
   });
 
   const assembly = assemble(expression_tree);
-  if (process.argv.length == 3) {
+  if (process.argv.length === 3) {
     console.log(assembly);
   } else {
     await writeFile(process.argv[3], assembly);

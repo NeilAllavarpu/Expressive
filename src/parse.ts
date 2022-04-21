@@ -185,7 +185,7 @@ const parse_tree = (
     variable_map[label] = {
       captured: true,
       index: num_variables + i,
-      type: VariableType.int,
+      type: parent_vars[label].type,
     };
     parent_vars[label].captured = true;
   });

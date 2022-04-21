@@ -7,24 +7,21 @@ import {
 } from "./types";
 
 const is_numeric = (string: string, position: number) => {
-  const code = string.charCodeAt(position);
-  return "0".charCodeAt(0) <= code && code <= "9".charCodeAt(0);
+  const char = string.charAt(position);
+  return "0" <= char && char <= "9";
 };
 
 const is_alphabetic = (string: string, position: number) => {
-  const code = string.charCodeAt(position);
-  return (
-    ("a".charCodeAt(0) <= code && code <= "z".charCodeAt(0)) ||
-    ("A".charCodeAt(0) <= code && code <= "Z".charCodeAt(0))
-  );
+  const char = string.charAt(position);
+  return ("a" <= char && char <= "z") || ("A" <= char && char <= "Z");
 };
 
 const is_alphanumeric = (string: string, position: number) =>
   is_alphabetic(string, position) || is_numeric(string, position);
 
 const is_whitespace = (string: string, position: number) => {
-  const code = string.charCodeAt(position);
-  return code == " ".charCodeAt(0) || code == "\n".charCodeAt(0);
+  const code = string.charAt(position);
+  return code === " " || code === "\n";
 };
 
 export const tokenize = (program: string) => {
@@ -44,7 +41,7 @@ export const tokenize = (program: string) => {
         type: token_type,
       });
       position += token_type.length;
-    } else if (program.charAt(position) == '"') {
+    } else if (program.charAt(position) === '"') {
       const closing_quote_index = program.indexOf('"', position + 1);
       tokens.push({
         string: program.substring(position + 1, closing_quote_index),
