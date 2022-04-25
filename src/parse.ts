@@ -1,4 +1,5 @@
 import { exit } from "process";
+import { standard_vars } from "./constants";
 import { Context, ParseContext, parse_tokens } from "./parse_tokens";
 import {
   Expression,
@@ -175,30 +176,51 @@ const map_context = (context: Context) => {
   return map_expression(context.body, map, context.parameters.length);
 };
 
-const parse_tree = (
-  tree: ParseContext & Context,
-  parent_vars: Record<string, VariableInfo> = {}
-): Func[] => {
+type FuncTree = Func & {
+  children: FuncTree[];
+};
+
+const parse_tree = (tree: ParseContext & Context): FuncTree => {
+  const subcontexts = tree.contexts.flatMap((subtree) => parse_tree(subtree));
+
   const { num_variables, variable_map, bound_variables } = map_context(tree);
 
-  bound_variables.forEach((label, i) => {
-    variable_map[label] = {
+  const additional_bound = subcontexts
+    .map(({ bound }) => bound)
+    .flat()
+    .filter(
+      (label) => !(label in variable_map || bound_variables.includes(label))
+    );
+  const f: Func = {
+    ...tree,
+    bound: bound_variables.concat(additional_bound),
+    num_variables,
+    variables: variable_map,
+  };
+  return {
+    ...f,
+    children: subcontexts,
+  };
+};
+
+const apply_bound = (
+  tree: FuncTree,
+  parent_vars: Func["variables"]
+): Func[] => {
+  tree.bound.forEach((label, i) => {
+    tree.variables[label] = {
       captured: true,
-      index: num_variables + i,
+      index: tree.num_variables + i,
       type: parent_vars[label].type,
     };
     parent_vars[label].captured = true;
   });
-  const total_num_variables = num_variables + bound_variables.length;
-  const f: Func = {
-    ...tree,
-    bound: bound_variables,
-    num_variables: total_num_variables,
-    variables: variable_map,
-  };
+
+  tree.num_variables += tree.bound.length;
+
   return [
-    f,
-    ...tree.contexts.flatMap((subtree) => parse_tree(subtree, variable_map)),
+    tree,
+    ...tree.children.map((func) => apply_bound(func, tree.variables)).flat(),
   ];
 };
 
@@ -211,15 +233,16 @@ export const parse = (tokens: Token[]): Prog => {
     parameters: [],
   };
 
-  const functions: Func[] = parse_tree(main);
+  const functions: Func[] = apply_bound(parse_tree(main), standard_vars);
 
-  const string_map = {};
-  // [...parsed.contexts.map(({body,}) => body),
-  //   parsed.body,]
-  // .reduce(
-  //     (r, expression) =>
-  //       indexify_strings(expression, r.string_map, r.num_strings),
-  //     {"num_strings": 0, "string_map": {},});
+  const { string_map } = [
+    ...parsed.contexts.map(({ body }) => body),
+    parsed.body,
+  ].reduce(
+    (r, expression) =>
+      indexify_strings(expression, r.string_map, r.num_strings),
+    { num_strings: 0, string_map: {} }
+  );
   return {
     functions: functions.reduce(
       (map, func) => ({

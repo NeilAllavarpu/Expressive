@@ -1,4 +1,4 @@
-import type { Operator } from "./types";
+import { Operator, VariableInfo, VariableType } from "./types";
 import { OperatorType } from "./types";
 
 export const OperatorMap: Record<OperatorType, Operator> = {
@@ -39,5 +39,18 @@ export const OperatorMap: Record<OperatorType, Operator> = {
     left_bind: 5,
     operator: OperatorType.And,
     right_bind: 6,
+  },
+};
+
+export const standard_vars: Record<string, VariableInfo> = {
+  print: {
+    captured: true,
+    index: -1,
+    type: VariableType.func,
+  },
+  return: {
+    captured: true,
+    index: -2,
+    type: VariableType.func,
   },
 };

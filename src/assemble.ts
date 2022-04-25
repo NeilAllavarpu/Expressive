@@ -1,6 +1,6 @@
 import { exit } from "process";
 import dedent from "ts-dedent";
-import { OperatorMap } from "./constants";
+import { OperatorMap, standard_vars } from "./constants";
 import {
   Expression,
   Func,
@@ -11,6 +11,8 @@ import {
   VariableInfo,
   VariableType,
 } from "./types";
+
+const var_size = 8;
 
 /*
   A closure object represents function invocations
@@ -35,7 +37,7 @@ const get_unique_int = (() => {
 const pop = (register = 0) => `ldr  x${register}, [sp], #16\n`;
 const push = (register = 0) => `str  x${register}, [sp, #-16]!\n`;
 
-const to_offset = (var_index: number) => -16 * (var_index + 1);
+const to_offset = (var_index: number) => -var_size * (var_index + 1);
 
 const assemble_expression = (
   expression: Expression,
@@ -73,7 +75,7 @@ const assemble_expression = (
       break;
     case ValueType.String:
       string = dedent`
-        adrp  x0, string${expression.index}
+        adrp x0, string${expression.index}
         add  x0, x0, #:lo12:string${expression.index}\n
       `;
       break;
@@ -120,9 +122,9 @@ const assemble_expression = (
     case OperatorType.And: {
       const i = get_unique_int();
       string = dedent`
-        ${assemble_subexpression(expression.arguments[0], false).trim()}
+        ${assemble_subexpression(expression.arguments[0], false).trimEnd()}
         cbz  x0, and${i}
-        ${assemble_subexpression(expression.arguments[1], false).trim()}
+        ${assemble_subexpression(expression.arguments[1], false).trimEnd()}
         and${i}:\n
       `;
       break;
@@ -150,10 +152,10 @@ const assemble_expression = (
       break;
     case MiscType.Invocation:
       string = dedent`
-        ${assemble_subexpression(expression.func, false).trim()}
+        ${assemble_subexpression(expression.func, false).trimEnd()}
         ldr  x9, [x0], #8
         mov  x10, x0
-        ${load_args(expression.arguments, 1).trim()}
+        ${load_args(expression.arguments, 1).trimEnd()}
         mov  x0, x10
         blr  x9\n
       `;
@@ -241,40 +243,91 @@ const set_captured = (func: Func) => {
   }
 };
 
+const round_to_multiple = (num: number, mod: number) =>
+  num - 1 + mod - ((num - 1) % mod);
+
+const var_stack_space = (num_variables: number) => num_variables * var_size;
+
+const setup_main = ({ variables, num_variables, bound }: Func) => {
+  const func_size = 16;
+  const base_offset = var_stack_space(num_variables);
+  const requested_vars = Object.keys(standard_vars)
+    .filter((label) => label in variables)
+    .sort((var1, var2) => bound.indexOf(var1) - bound.indexOf(var2));
+  // need 8*#captured for starting block
+  const block_space = var_size * requested_vars.length;
+  const block_offset = base_offset + func_size * requested_vars.length;
+  return dedent`
+    sub  sp, sp, #${round_to_multiple(block_offset + block_space, 16)}
+    ${requested_vars
+      .map(
+        (_, i) => dedent`
+          sub  x0, x29, #${base_offset + func_size * (i + 1)}
+          str  x0, [x29, #-${block_offset + block_space - 8 * i}]
+        `
+      )
+      .join("\n")}
+    ${requested_vars
+      .map((label, i) => {
+        const offset = base_offset + i * func_size;
+        return dedent`
+          adrp x0, ${label}
+          add  x0, x0, #:lo12:${label}
+          str  x0, [x29, #-${offset + 8}]
+          sub  x0, x29, #${offset + 8}
+          str  x0, [x29, #-${offset + 16}]
+        `;
+      })
+      .join("\n")}
+    sub  x0, x29, #${block_offset + block_space}
+  `;
+};
+
 const assemble_function = (
   func: Func,
   function_map: Record<number, Func>
 ) => dedent`
-  ${func.index === 0 ? "main" : `function${func.index}`}:
+  ${
+    func.index === 0
+      ? "main"
+      : dedent`
+    function${func.index}`
+  }:
   stp  x29, x30, [sp, #-16]!
   mov  x29, sp
-  sub  sp, sp, #${func.num_variables * 16}
-  /// SETTING CAPTURED VARIABLES
-  ${set_captured(func)}
+  ${
+    func.index === 0
+      ? setup_main(func)
+      : `sub  sp, sp, #${round_to_multiple(
+          var_stack_space(func.num_variables),
+          16
+        )}`
+  }
   /// SETTING PARAMETERS
-  ${set_parameters(func)}
+  ${set_parameters(func).trimEnd()}
+  /// SETTING CAPTURED VARIABLES
+  ${set_captured(func).trimEnd()}
   /// FUNCTION BODY
-  ${assemble_expression(func.body, func.variables, function_map, false).trim()}
-  add  sp, sp, #${func.num_variables * 16}
+  ${assemble_expression(
+    func.body,
+    func.variables,
+    function_map,
+    false
+  ).trimEnd()}
+  mov  sp, x29
   ldp  x29, x30, [sp], #16
   ret\n
 `;
 
 const load_strings = (strings: Record<string, number>) =>
   Object.entries(strings)
-    .map(
-      ([str, index]) => dedent`
-    \  string${index}:
-    .asciz "${str}"
-  `
-    )
+    .map(([str, index]) => `string${index}: .asciz "${str}"`)
     .join("\n");
 
 export const assemble = (main: Prog) => dedent`
   \  .data
-  ${load_strings(main.strings).trim()}
-  .text
-    .extern string_add
+  ${load_strings(main.strings).trimEnd()}
+    .text
     .global main
   ${Object.values(main.functions)
     .map((func) => assemble_function(func, main.functions))

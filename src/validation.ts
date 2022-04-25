@@ -1,4 +1,3 @@
-import { exit } from "process";
 import {
   Expression,
   Func,
@@ -43,7 +42,7 @@ export const typify = (
     case MiscType.Invocation: {
       typify(expression.func, variables);
       if (expression.func.value_type !== VariableType.func) {
-        throw TypeError("Non-function attempting to be invoked!");
+        // throw TypeError("Non-function attempting to be invoked!");
       }
       // fall through
     }
