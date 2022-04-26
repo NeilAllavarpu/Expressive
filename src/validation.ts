@@ -1,3 +1,4 @@
+import { breaking_operators } from "./constants";
 import {
   Expression,
   Func,
@@ -6,8 +7,7 @@ import {
   ValueType,
   VariableType,
 } from "./types";
-
-const breaking_operators = [OperatorType.Semicolon, OperatorType.And];
+import { last_element } from "./utils";
 
 export const typify_arr = (
   expression_sequence: Expression[],
@@ -17,8 +17,6 @@ export const typify_arr = (
     typify(expression, variables);
   });
 };
-
-const last_elem = <T>(array: T[]) => array[array.length - 1];
 
 const typify = (expression: Expression, variables: Func["variables"]) => {
   switch (expression.type) {
@@ -40,7 +38,7 @@ const typify = (expression: Expression, variables: Func["variables"]) => {
       typify_arr(expression.value, variables);
       if (
         expression.variable.value_type !==
-        last_elem(expression.value).value_type
+        last_element(expression.value).value_type
       ) {
         throw TypeError(
           "Type of variable does not match type of expression in assignment!"
@@ -53,7 +51,7 @@ const typify = (expression: Expression, variables: Func["variables"]) => {
       break;
     case MiscType.Invocation: {
       typify_arr(expression.func, variables);
-      if (last_elem(expression.func).value_type !== VariableType.func) {
+      if (last_element(expression.func).value_type !== VariableType.func) {
         throw TypeError("Non-function attempting to be invoked!");
       }
       expression.arguments.forEach((expr) => {
@@ -65,11 +63,11 @@ const typify = (expression: Expression, variables: Func["variables"]) => {
       expression.arguments.forEach((expr) => {
         typify_arr(expr, variables);
       });
-      const expression_type = last_elem(expression.arguments[0]).value_type;
+      const expression_type = last_element(expression.arguments[0]).value_type;
       if (
         !breaking_operators.includes(expression.type) &&
         !expression.arguments
-          .map(last_elem)
+          .map(last_element)
           .every(({ value_type }) => value_type === expression_type)
       ) {
         throw TypeError("ERROR: mismatch of types in operation!");

@@ -194,6 +194,7 @@ export const parse_tokens = (
         {
           arguments: args,
           func: lhs,
+          is_tail_call: false,
           type: MiscType.Invocation,
           value_type: VariableType.UNDEF,
         },

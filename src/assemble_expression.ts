@@ -158,7 +158,16 @@ const assemble_expression = (
         mov  x10, x0
         ${load_args(expression.arguments, 1).trimEnd()}
         mov  x0, x10
-        blr  x9\n
+        ${
+          expression.is_tail_call
+            ? // skips 2 instructions (saving x29/x30/sp)
+              dedent`
+              add  x9, x9, #8
+              mov  sp, x29
+              br   x9
+            `
+            : "blr  x9"
+        }\n
       `;
       break;
     case OperatorType.Add:

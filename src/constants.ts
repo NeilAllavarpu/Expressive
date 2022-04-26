@@ -54,3 +54,5 @@ export const standard_vars: Record<string, VariableInfo> = {
     type: VariableType.func,
   },
 };
+
+export const breaking_operators = [OperatorType.Semicolon, OperatorType.And];

@@ -4,6 +4,7 @@ import { tokenize } from "./tokenize";
 import { parse } from "./parse";
 import { assemble } from "./assemble";
 import { typify_arr } from "./validation";
+import { apply_tail_recursion } from "./tail_recursive";
 
 (async () => {
   if (process.argv.length < 3) {
@@ -20,6 +21,7 @@ import { typify_arr } from "./validation";
 
   Object.values(expression_tree.functions).forEach((func) => {
     typify_arr(func.body, func.variables);
+    apply_tail_recursion(func);
   });
 
   const assembly = assemble(expression_tree);
