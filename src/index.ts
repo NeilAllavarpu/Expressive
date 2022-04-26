@@ -3,7 +3,7 @@ import { exit } from "process";
 import { tokenize } from "./tokenize";
 import { parse } from "./parse";
 import { assemble } from "./assemble";
-import { typify } from "./validation";
+import { typify_arr } from "./validation";
 
 (async () => {
   if (process.argv.length < 3) {
@@ -19,7 +19,7 @@ import { typify } from "./validation";
   const expression_tree = parse(tokens);
 
   Object.values(expression_tree.functions).forEach((func) => {
-    typify(func.body, func.variables);
+    typify_arr(func.body, func.variables);
   });
 
   const assembly = assemble(expression_tree);

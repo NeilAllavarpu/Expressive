@@ -84,7 +84,7 @@ export type TypeExpression = {
 export type AssignmentExpression = {
   type: OperatorType.Assignment;
   variable: VariableExpression;
-  value: Expression;
+  value: Expression[];
   value_type: VariableType;
 };
 export type DeclarationExpression = {
@@ -100,18 +100,27 @@ export type FunctionExpression = {
 };
 export type InvocationExpression = {
   type: MiscType.Invocation;
-  func: Expression;
-  arguments: Expression[];
+  func: Expression[];
+  arguments: Expression[][];
   value_type: VariableType;
 };
 type SpecificTypes = OperatorType.Assignment | OperatorType.Colon;
 export type BinaryExpression = {
   type: Exclude<OperatorType, SpecificTypes>;
-  arguments: Expression[];
+  arguments: Expression[][];
   value_type: VariableType;
 };
 
-export type Expression = IntegerExpression | StringExpression | VariableExpression | TypeExpression | AssignmentExpression | DeclarationExpression | FunctionExpression | InvocationExpression | BinaryExpression;
+export type Expression =
+  | IntegerExpression
+  | StringExpression
+  | VariableExpression
+  | TypeExpression
+  | AssignmentExpression
+  | DeclarationExpression
+  | FunctionExpression
+  | InvocationExpression
+  | BinaryExpression;
 
 export type VariableInfo = {
   index: number;
@@ -120,7 +129,7 @@ export type VariableInfo = {
 };
 
 export type Func = {
-  body: Expression;
+  body: Expression[];
   index: number;
   variables: Record<string, VariableInfo>;
   num_variables: number;

@@ -18,6 +18,22 @@ type MapExpresionReturn = {
   bound_variables: string[];
 };
 
+const map_expression_arr = (
+  expression_arr: Expression[],
+  variable_map: Record<string, VariableInfo> = {},
+  num_variables = 0,
+  bound_variables: string[] = []
+): MapExpresionReturn =>
+  expression_arr.reduce(
+    ({ variable_map, bound_variables, num_variables }, expression) =>
+      map_expression(expression, variable_map, num_variables, bound_variables),
+    {
+      bound_variables,
+      num_variables,
+      variable_map,
+    }
+  );
+
 const map_expression = (
   expression: Expression,
   variable_map: Record<string, VariableInfo> = {},
@@ -45,7 +61,7 @@ const map_expression = (
         num_variables,
         bound_variables
       ));
-      return map_expression(
+      return map_expression_arr(
         expression.value,
         variable_map,
         num_variables,
@@ -85,7 +101,7 @@ const map_expression = (
       exit(1);
       break;
     case MiscType.Invocation: {
-      ({ bound_variables, num_variables, variable_map } = map_expression(
+      ({ bound_variables, num_variables, variable_map } = map_expression_arr(
         expression.func,
         variable_map,
         num_variables,
@@ -96,7 +112,7 @@ const map_expression = (
     default:
       return expression.arguments.reduce(
         (data, expression) =>
-          map_expression(
+          map_expression_arr(
             expression,
             data.variable_map,
             data.num_variables,
@@ -116,9 +132,23 @@ type IndexifyStringReturn = {
   string_map: Record<string, number>;
 };
 
+const indexify_strings_arr = (
+  expression_arr: Expression[],
+  string_map: Record<string, number> = {},
+  num_strings = 0
+): IndexifyStringReturn =>
+  expression_arr.reduce(
+    ({ string_map, num_strings }, expression) =>
+      indexify_strings(expression, string_map, num_strings),
+    {
+      num_strings,
+      string_map,
+    }
+  );
+
 const indexify_strings = (
   expression: Expression,
-  string_map: Record<string, number> = {},
+  string_map: Record<string, number>,
   num_strings = 0
 ): IndexifyStringReturn => {
   switch (expression.type) {
@@ -133,7 +163,7 @@ const indexify_strings = (
         string_map,
       };
     case OperatorType.Assignment:
-      return indexify_strings(expression.value, string_map, num_strings);
+      return indexify_strings_arr(expression.value, string_map, num_strings);
     case OperatorType.Colon:
     case ValueType.Variable:
     case ValueType.Integer:
@@ -147,7 +177,11 @@ const indexify_strings = (
         string_map,
       };
     case MiscType.Invocation: {
-      const ret = indexify_strings(expression.func, string_map, num_strings);
+      const ret = indexify_strings_arr(
+        expression.func,
+        string_map,
+        num_strings
+      );
       num_strings = ret.num_strings;
       string_map = ret.string_map;
       // fall through
@@ -155,7 +189,7 @@ const indexify_strings = (
     default:
       return expression.arguments.reduce(
         (r, expression) =>
-          indexify_strings(expression, r.string_map, r.num_strings),
+          indexify_strings_arr(expression, r.string_map, r.num_strings),
         { num_strings, string_map }
       );
   }
@@ -173,7 +207,7 @@ const map_context = (context: Context) => {
     }),
     {}
   );
-  return map_expression(context.body, map, context.parameters.length);
+  return map_expression_arr(context.body, map, context.parameters.length);
 };
 
 type FuncTree = Func & {
@@ -239,8 +273,8 @@ export const parse = (tokens: Token[]): Prog => {
     ...parsed.contexts.map(({ body }) => body),
     parsed.body,
   ].reduce(
-    (r, expression) =>
-      indexify_strings(expression, r.string_map, r.num_strings),
+    ({ string_map, num_strings }, expression) =>
+      indexify_strings_arr(expression, string_map, num_strings),
     { num_strings: 0, string_map: {} }
   );
   return {

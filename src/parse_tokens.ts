@@ -19,7 +19,7 @@ export type Context = Pick<Func, "body" | "parameters" | "index">;
 export type ParseContext = {
   index: number;
   contexts: (ParseContext & Context)[];
-  body: Expression;
+  body: Expression[];
 };
 
 const terminating_tokens: TokenType[] = [
@@ -41,44 +41,52 @@ export const parse_tokens = (
     exit(1);
   }
 
-  let expression: Expression;
+  let lhs: Expression[];
   let contexts: ParseContext["contexts"] = [];
 
   const curr_token = tokens[index];
   switch (curr_token.type) {
     case ValueType.Integer:
-      expression = {
-        type: ValueType.Integer,
-        value: curr_token.integer,
-        value_type: VariableType.int,
-      };
+      lhs = [
+        {
+          type: ValueType.Integer,
+          value: curr_token.integer,
+          value_type: VariableType.int,
+        },
+      ];
       break;
     case ValueType.String:
-      expression = {
-        index: -1,
-        string: curr_token.string,
-        type: ValueType.String,
-        value_type: VariableType.str,
-      };
+      lhs = [
+        {
+          index: -1,
+          string: curr_token.string,
+          type: ValueType.String,
+          value_type: VariableType.str,
+        },
+      ];
       break;
     case ValueType.Variable:
-      expression = {
-        label: curr_token.label,
-        type: ValueType.Variable,
-        value_type: VariableType.UNDEF,
-      };
+      lhs = [
+        {
+          label: curr_token.label,
+          type: ValueType.Variable,
+          value_type: VariableType.UNDEF,
+        },
+      ];
       break;
     case VariableType.int:
     case VariableType.str:
     case VariableType.func:
-      expression = {
-        type: curr_token.type,
-        value_type: VariableType.UNDEF,
-      };
+      lhs = [
+        {
+          type: curr_token.type,
+          value_type: VariableType.UNDEF,
+        },
+      ];
       break;
     case SemanticType.LeftParen: {
       const parsed = parse_tokens(tokens, index + 1);
-      expression = parsed.body;
+      lhs = parsed.body;
       index = parsed.index;
       contexts = contexts.concat(parsed.contexts);
       if (
@@ -141,11 +149,13 @@ export const parse_tokens = (
         console.error("ERROR: Missing closing brace");
         exit(1);
       }
-      expression = {
-        func: index,
-        type: ValueType.Function,
-        value_type: VariableType.func,
-      };
+      lhs = [
+        {
+          func: index,
+          type: ValueType.Function,
+          value_type: VariableType.func,
+        },
+      ];
       break;
     }
     default:
@@ -160,7 +170,7 @@ export const parse_tokens = (
   while (!is_terminating(tokens, index)) {
     if (tokens[index].type === SemanticType.LeftParen) {
       // consume arguments
-      let args: Expression[] = [];
+      let args: Expression[][] = [];
       if (tokens[index + 1].type !== SemanticType.RightParen) {
         while (tokens[index].type !== SemanticType.RightParen) {
           const parsed = parse_tokens(tokens, index + 1, 0);
@@ -180,12 +190,14 @@ export const parse_tokens = (
       } else {
         ++index;
       }
-      expression = {
-        arguments: args,
-        func: expression,
-        type: MiscType.Invocation,
-        value_type: VariableType.UNDEF,
-      };
+      lhs = [
+        {
+          arguments: args,
+          func: lhs,
+          type: MiscType.Invocation,
+          value_type: VariableType.UNDEF,
+        },
+      ];
       ++index;
     } else {
       const operator = OperatorMap[tokens[index].type as OperatorType];
@@ -200,58 +212,68 @@ export const parse_tokens = (
         break;
       }
       const parse_result = parse_tokens(tokens, index + 1, operator.right_bind);
-      index = parse_result.index;
+      ({ index } = parse_result);
       contexts = contexts.concat(parse_result.contexts);
 
       switch (operator.operator) {
-        case OperatorType.Colon:
-          if (expression.type !== ValueType.Variable) {
-            console.error(
-              "ERROR: non-variable specified as LHS to colon operator"
-            );
-            exit(1);
+        case OperatorType.Colon: {
+          const [variable] = lhs;
+          if (lhs.length !== 1 || variable.type !== ValueType.Variable) {
+            throw SyntaxError("Non-variable as LHS to colon operator!");
           }
+          const [var_type] = parse_result.body;
           if (
-            !Object.values(VariableType).includes(
-              parse_result.body.type as VariableType
-            )
+            !Object.values(VariableType).includes(var_type.type as VariableType)
           ) {
-            console.error("ERROR: non-type specified as RHS to colon operator");
-            exit(1);
+            throw SyntaxError(
+              "ERROR: non-type specified as RHS to colon operator"
+            );
           }
-          expression = {
-            type: OperatorType.Colon,
-            value_type: VariableType.UNDEF,
-            variable: expression,
-            variable_type: parse_result.body as TypeExpression,
-          };
+          lhs = [
+            {
+              type: OperatorType.Colon,
+              value_type: VariableType.UNDEF,
+              variable,
+              variable_type: var_type as TypeExpression,
+            },
+          ];
           break;
-        case OperatorType.Assignment:
-          if (expression.type !== ValueType.Variable) {
-            console.error(
+        }
+        case OperatorType.Assignment: {
+          const [variable] = lhs;
+          if (lhs.length !== 1 || variable.type !== ValueType.Variable) {
+            throw SyntaxError(
               "ERROR: non-variable specified as LHS to assignment operator"
             );
-            exit(1);
           }
-          expression = {
-            type: OperatorType.Assignment,
-            value: parse_result.body,
-            value_type: VariableType.UNDEF,
-            variable: expression,
-          };
+          lhs = [
+            {
+              type: OperatorType.Assignment,
+              value: parse_result.body,
+              value_type: VariableType.UNDEF,
+              variable,
+            },
+          ];
           break;
+        }
+        case OperatorType.Semicolon: {
+          lhs = lhs.concat(parse_result.body);
+          break;
+        }
         default:
-          expression = {
-            arguments: [expression, parse_result.body],
-            type: operator.operator,
-            value_type: VariableType.UNDEF,
-          };
+          lhs = [
+            {
+              arguments: [lhs, parse_result.body],
+              type: operator.operator,
+              value_type: VariableType.UNDEF,
+            },
+          ];
       }
     }
   }
 
   return {
-    body: expression,
+    body: lhs,
     contexts,
     index,
   };
