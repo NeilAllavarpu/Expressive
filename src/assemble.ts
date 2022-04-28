@@ -80,38 +80,39 @@ const round_to_multiple = (num: number, mod: number) =>
 
 const var_stack_space = (num_variables: number) => num_variables * var_size;
 
-const setup_main = ({ variables, num_variables, bound }: Func) => {
+const setup_main = ({ variables, bound }: Func) => {
   const func_size = 16;
-  const base_offset = var_stack_space(num_variables);
   const requested_vars = Object.keys(standard_vars)
     .filter((label) => label in variables)
     .sort((var1, var2) => bound.indexOf(var1) - bound.indexOf(var2));
-  // need 8*#captured for starting block
   const block_space = var_size * requested_vars.length;
-  const block_offset = base_offset + func_size * requested_vars.length;
+  const block_offset = func_size * requested_vars.length;
+  const a = block_offset + block_space;
   return dedent`
-    sub  sp, sp, #${round_to_multiple(block_offset + block_space, 16)}
+    mov  x0, #${block_offset + block_space}
+    bl   malloc
+    add  x0, x0, #${block_offset + block_space}
     ${requested_vars
       .map(
         (_, i) => dedent`
-          sub  x0, x29, #${base_offset + func_size * (i + 1)}
-          str  x0, [x29, #-${block_offset + block_space - 8 * i}]
+          sub  x1, x0, #${func_size * (i + 1)}
+          str  x1, [x0, #-${block_offset + block_space - 8 * i}]
         `
       )
       .join("\n")}
     ${requested_vars
       .map((label, i) => {
-        const offset = base_offset + i * func_size;
+        const offset = i * func_size;
         return dedent`
-          adrp x0, ${label}
-          add  x0, x0, #:lo12:${label}
-          str  x0, [x29, #-${offset + 8}]
-          sub  x0, x29, #${offset + 8}
-          str  x0, [x29, #-${offset + 16}]
+          adrp x1, ${label}
+          add  x1, x1, #:lo12:${label}
+          str  x1, [x0, #-${offset + 8}]
+          sub  x1, x0, #${offset + 8}
+          str  x1, [x0, #-${offset + 16}]
         `;
       })
       .join("\n")}
-    sub  x0, x29, #${block_offset + block_space}
+    sub  x0, x0, #${block_offset + block_space}
   `;
 };
 
@@ -119,22 +120,11 @@ const assemble_function = (
   func: Func,
   function_map: Record<number, Func>
 ) => dedent`
-  ${
-    func.index === 0
-      ? "main"
-      : dedent`
-    function${func.index}`
-  }:
+  ${func.index === 0 ? "main" : `function${func.index}`}:
   stp  x29, x30, [sp, #-16]!
   mov  x29, sp
-  ${
-    func.index === 0
-      ? setup_main(func)
-      : `sub  sp, sp, #${round_to_multiple(
-          var_stack_space(func.num_variables),
-          16
-        )}`
-  }
+  ${func.index === 0 ? setup_main(func) : ""}
+  sub  sp, sp, #${round_to_multiple(var_stack_space(func.num_variables), 16)}
   /// SETTING PARAMETERS
   ${set_parameters(func).trimEnd()}
   /// SETTING CAPTURED VARIABLES

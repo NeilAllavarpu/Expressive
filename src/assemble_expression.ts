@@ -135,7 +135,7 @@ const assemble_expression = (
         const { bound } = function_map[expression.func];
         // create closure object, then load in the bound parameters
         string = dedent`
-        mov  x0, ${8 * (bound.length + 1)}
+        mov  x0, #${8 * (bound.length + 1)}
         bl   malloc
         adrp x1, function${expression.func}
         add  x1, x1, #:lo12:function${expression.func}
@@ -151,25 +151,32 @@ const assemble_expression = (
       `;
       }
       break;
-    case MiscType.Invocation:
+    case MiscType.Invocation: {
       string = dedent`
         ${assemble_subexpression_arr(expression.func, false).trimEnd()}
         ldr  x9, [x0], #8
-        mov  x10, x0
-        ${load_args(expression.arguments, 1).trimEnd()}
-        mov  x0, x10
+        ${
+          expression.arguments.length > 0
+            ? dedent`
+            mov  x10, x0
+            ${load_args(expression.arguments, 1).trimEnd()}
+            mov  x0, x10
+          `
+            : ""
+        }
         ${
           expression.is_tail_call
             ? // skips 2 instructions (saving x29/x30/sp)
               dedent`
-              add  x9, x9, #8
-              mov  sp, x29
-              br   x9
-            `
+                add  x9, x9, #8
+                mov  sp, x29
+                br   x9
+              `
             : "blr  x9"
         }\n
       `;
       break;
+    }
     case OperatorType.Add:
       {
         string = load_args(expression.arguments);
