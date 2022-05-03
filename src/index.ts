@@ -5,6 +5,7 @@ import { parse } from "./parse";
 import { assemble } from "./assemble";
 import { typify_arr } from "./validation";
 import { apply_tail_recursion } from "./tail_recursive";
+import { register_allocate } from "./register_allocation";
 
 (async () => {
   if (process.argv.length < 3) {
@@ -19,10 +20,20 @@ import { apply_tail_recursion } from "./tail_recursive";
   const tokens = tokenize(file_contents);
   const expression_tree = parse(tokens);
 
-  Object.values(expression_tree.functions).forEach((func) => {
-    typify_arr(func.body, func.variables);
-    apply_tail_recursion(func);
-  });
+  expression_tree.functions = Object.entries(expression_tree.functions)
+    .map(([index, func]) => {
+      typify_arr(func.body, func.variables);
+      apply_tail_recursion(func);
+      func = register_allocate(func);
+      return { func, index };
+    })
+    .reduce(
+      (tree, { index, func }) => ({
+        ...tree,
+        [index]: func,
+      }),
+      {}
+    );
 
   const assembly = assemble(expression_tree);
   if (process.argv.length === 3) {

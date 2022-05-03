@@ -1,5 +1,4 @@
 export type Operator = {
-  assembly?: string;
   operator: OperatorType;
   left_bind: number;
   right_bind: number;
@@ -7,12 +6,13 @@ export type Operator = {
 
 export enum OperatorType {
   Add = "+",
+  And = "&&",
   Assignment = "=",
   Colon = ":",
   Mult = "*",
+  Or = "||",
   Semicolon = ";",
   Subtraction = "-",
-  And = "&&",
 }
 
 export enum SemanticType {
@@ -83,6 +83,8 @@ export type StringExpression = {
 
 export type VariableExpression = {
   type: ValueType.Variable;
+  register?: number;
+  evict?: string | null;
   label: string;
   value_type: VariableType;
 };
@@ -110,17 +112,25 @@ export type FunctionExpression = {
   type: ValueType.Function;
   func: number;
   value_type: VariableType.func;
+  used_registers?: Record<number, string>;
 };
 
+export type RegisterMap = Record<number, null | string>;
 export type InvocationExpression = {
   type: MiscType.Invocation;
   func: Expression[];
   arguments: Expression[][];
   is_tail_call: boolean;
   value_type: VariableType;
+  used_registers?: Record<number, string>;
 };
 
 type SpecificTypes = OperatorType.Assignment | OperatorType.Colon;
+
+export type ValueExpression =
+  | IntegerExpression
+  | StringExpression
+  | FunctionExpression;
 
 export type BinaryExpression = {
   type: Exclude<OperatorType, SpecificTypes>;
@@ -129,13 +139,11 @@ export type BinaryExpression = {
 };
 
 export type Expression =
-  | IntegerExpression
-  | StringExpression
+  | ValueExpression
   | VariableExpression
   | TypeExpression
   | AssignmentExpression
   | DeclarationExpression
-  | FunctionExpression
   | InvocationExpression
   | BinaryExpression;
 

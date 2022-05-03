@@ -27,6 +27,7 @@
         "ignoreIIFE": true
       }
     ],
-    "sort-keys": "error"
+    "sort-keys": "error",
+    "@typescript-eslint/switch-exhaustiveness-check": "error"
   }
 }

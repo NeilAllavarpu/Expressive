@@ -3,19 +3,16 @@ import { OperatorType } from "./types";
 
 export const OperatorMap: Record<OperatorType, Operator> = {
   [OperatorType.Add]: {
-    assembly: "add  x0, x0, x1\n",
     left_bind: 23,
     operator: OperatorType.Add,
     right_bind: 24,
   },
   [OperatorType.Subtraction]: {
-    assembly: "sub  x0, x0, x1\n",
     left_bind: 23,
     operator: OperatorType.Subtraction,
     right_bind: 24,
   },
   [OperatorType.Mult]: {
-    assembly: "mul  x0, x0, x1\n",
     left_bind: 25,
     operator: OperatorType.Mult,
     right_bind: 26,
@@ -38,6 +35,11 @@ export const OperatorMap: Record<OperatorType, Operator> = {
   [OperatorType.And]: {
     left_bind: 5,
     operator: OperatorType.And,
+    right_bind: 6,
+  },
+  [OperatorType.Or]: {
+    left_bind: 5,
+    operator: OperatorType.Or,
     right_bind: 6,
   },
 };

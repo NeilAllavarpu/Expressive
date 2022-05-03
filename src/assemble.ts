@@ -87,7 +87,6 @@ const setup_main = ({ variables, bound }: Func) => {
     .sort((var1, var2) => bound.indexOf(var1) - bound.indexOf(var2));
   const block_space = var_size * requested_vars.length;
   const block_offset = func_size * requested_vars.length;
-  const a = block_offset + block_space;
   return dedent`
     mov  x0, #${block_offset + block_space}
     bl   malloc
