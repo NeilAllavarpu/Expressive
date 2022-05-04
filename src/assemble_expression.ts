@@ -1,7 +1,6 @@
 import { exit } from "process";
 import dedent from "ts-dedent";
 import { to_offset } from "./assemble";
-import { OperatorMap } from "./constants";
 import {
   Expression,
   Func,
@@ -147,9 +146,35 @@ const assemble_expression = (
       `;
       break;
     }
+    case ValueType.Array: {
+      if (expression.used_registers === undefined) {
+        throw TypeError("beep booop");
+      }
+      const { length } = expression.arguments;
+      string = dedent`
+        ${save_all(expression.used_registers)}
+        mov  x19, x0
+        mov  x0, #${(length + 1) * 8}
+        bl   malloc
+        mov  x4, #${length}
+        str  x4, [x0]
+        ${expression.arguments
+          .map((expression) => assemble_subexpression_arr(expression, false))
+          .reduce(
+            (asm, var_asm, i) =>
+              asm + var_asm + `str  x4, [x0, #${(i + 1) * 8}]\n`,
+            ""
+          )}
+        mov  x4, x0
+        mov  x0, x19
+        ${load_all(expression.used_registers)}
+      `;
+      break;
+    }
     case VariableType.int:
     case VariableType.str:
     case VariableType.func:
+    case VariableType.arr:
     case VariableType.UNDEF:
       // these should never be reached
       exit(1);
@@ -201,27 +226,24 @@ const assemble_expression = (
           throw new TypeError("Register record saving failed");
         }
         string = dedent`
-          mov  x4, x0
+          mov  x5, x0
           mov  x0, #${8 * (bound.length + 1)}
-          // SAVING
           ${save_all(expression.used_registers)}
           bl   malloc
           ${load_all(expression.used_registers)}
-          // LOADED
-          adrp x5, function${expression.func}
-          add  x5, x5, #:lo12:function${expression.func}
-          str  x5, [x0]
+          adrp x4, function${expression.func}
+          add  x4, x4, #:lo12:function${expression.func}
+          str  x4, [x0]
           ${bound
             .map(
               (label, i) => dedent`
-            ldr  x5, [x29, #${to_offset(variable_map[label].index)}]
-            str  x5, [x0, #${(i + 1) * 8}]
-          `
+                ldr  x4, [x29, #${to_offset(variable_map[label].index)}]
+                str  x4, [x0, #${(i + 1) * 8}]
+              `
             )
             .join("\n")}
-          mov  x5, x0
-          mov  x0, x4
-          mov  x4, x5\n
+          mov  x4, x0
+          mov  x0, x5\n
         `;
       }
       break;
@@ -257,20 +279,22 @@ const assemble_expression = (
       `;
       break;
     }
+    case MiscType.Indexing: {
+      string = dedent`
+        ${assemble_subexpression_arr(expression.array).trimEnd()}
+        ${assemble_subexpression_arr(expression.index, false).trimEnd()}
+        ${pop(5)}
+        lsl  x4, x4, #3
+        add  x4, x4, #8
+        ldr  x4, [x5, x4]\n
+      `;
+      break;
+    }
     case OperatorType.Add:
-      {
-        string = load_args(expression.arguments);
-        switch (expression.value_type) {
-          case VariableType.UNDEF:
-          case VariableType.func:
-            throw TypeError("Invalid addition!");
-          case VariableType.int:
-            string += "add  x4, x4, x5\n";
-            break;
-          case VariableType.str:
-            string += "bl   string_add\n";
-        }
-      }
+      string = dedent`
+        ${load_args(expression.arguments)}
+        add  x4, x4, x5\n
+      `;
       break;
     case OperatorType.Mult:
       string = dedent`

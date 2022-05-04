@@ -25,11 +25,52 @@ export type ParseContext = {
 const terminating_tokens: TokenType[] = [
   SemanticType.RightParen,
   SemanticType.RightBrace,
+  SemanticType.RightBracket,
   SemanticType.Comma,
 ];
 
 const is_terminating = (tokens: Token[], index: number) =>
   index >= tokens.length || terminating_tokens.includes(tokens[index].type);
+
+const parse_expression_list = (
+  tokens: Token[],
+  index: number,
+  closing_token: SemanticType
+): {
+  index: number;
+  contexts: (ParseContext & Context)[];
+  args: Expression[][];
+} => {
+  // consume arguments
+  let args: Expression[][] = [];
+  let contexts: ParseContext["contexts"] = [];
+  if (tokens[index + 1].type === closing_token) {
+    return {
+      args,
+      contexts,
+      index,
+    };
+  }
+  while (tokens[index].type !== closing_token) {
+    const parsed = parse_tokens(tokens, index + 1, 0);
+    index = parsed.index;
+    contexts = contexts.concat(parsed.contexts);
+    if (
+      tokens[index].type !== closing_token &&
+      tokens[index].type !== SemanticType.Comma
+    ) {
+      throw SyntaxError(
+        `Unexpected token ${tokens[index].type} (expected closing parenthesis or comma)`
+      );
+    }
+    args = [...args, parsed.body];
+  }
+  return {
+    args,
+    contexts,
+    index,
+  };
+};
 
 export const parse_tokens = (
   tokens: Token[],
@@ -77,12 +118,43 @@ export const parse_tokens = (
     case VariableType.int:
     case VariableType.str:
     case VariableType.func:
-      lhs = [
-        {
+      {
+        let type_expression: TypeExpression = {
           type: curr_token.type,
           value_type: VariableType.UNDEF,
-        },
-      ];
+        };
+        while (tokens[index + 1].type === SemanticType.LeftBracket) {
+          if (tokens[index + 2].type !== SemanticType.RightBracket) {
+            throw SyntaxError(
+              "Missing closing `[` in array type specification"
+            );
+          }
+          type_expression = {
+            of: type_expression,
+            type: VariableType.arr,
+            value_type: VariableType.arr,
+          };
+          index += 2;
+        }
+        lhs = [type_expression];
+      }
+      break;
+    case SemanticType.LeftBracket:
+      {
+        const arg_list = parse_expression_list(
+          tokens,
+          index,
+          SemanticType.RightBracket
+        );
+        index = arg_list.index;
+        lhs = [
+          {
+            arguments: arg_list.args,
+            type: ValueType.Array,
+            value_type: VariableType.arr,
+          },
+        ];
+      }
       break;
     case SemanticType.LeftParen: {
       const parsed = parse_tokens(tokens, index + 1);
@@ -169,37 +241,37 @@ export const parse_tokens = (
 
   while (!is_terminating(tokens, index)) {
     if (tokens[index].type === SemanticType.LeftParen) {
-      // consume arguments
-      let args: Expression[][] = [];
-      if (tokens[index + 1].type !== SemanticType.RightParen) {
-        while (tokens[index].type !== SemanticType.RightParen) {
-          const parsed = parse_tokens(tokens, index + 1, 0);
-          index = parsed.index;
-          contexts = contexts.concat(parsed.contexts);
-          if (
-            tokens[index].type !== SemanticType.RightParen &&
-            tokens[index].type !== SemanticType.Comma
-          ) {
-            console.error(
-              `Unexpected token ${tokens[index].type} (expected closing parenthesis or comma)`
-            );
-            exit(1);
-          }
-          args = [...args, parsed.body];
-        }
-      } else {
-        ++index;
-      }
+      const arg_list = parse_expression_list(
+        tokens,
+        index,
+        SemanticType.RightParen
+      );
+      index = arg_list.index + 1;
       lhs = [
         {
-          arguments: args,
+          arguments: arg_list.args,
           func: lhs,
           is_tail_call: false,
           type: MiscType.Invocation,
           value_type: VariableType.UNDEF,
         },
       ];
-      ++index;
+    } else if (tokens[index].type === SemanticType.LeftBracket) {
+      const parse_result = parse_tokens(tokens, index + 1, 0);
+      ({ index } = parse_result);
+      if (tokens[index].type !== SemanticType.RightBracket) {
+        throw SyntaxError("Missing closing bracket for array indexing");
+      }
+      index = index + 1;
+      contexts = contexts.concat(parse_result.contexts);
+      lhs = [
+        {
+          array: lhs,
+          index: parse_result.body,
+          type: MiscType.Indexing,
+          value_type: VariableType.UNDEF,
+        },
+      ];
     } else {
       const operator = OperatorMap[tokens[index].type as OperatorType];
       if (operator === undefined) {

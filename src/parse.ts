@@ -95,11 +95,26 @@ const map_expression = (
       };
     case VariableType.int:
     case VariableType.str:
+    case VariableType.arr:
     case VariableType.func:
     case VariableType.UNDEF:
       console.error("ERROR: type specified as argument to operator");
       exit(1);
       break;
+    case MiscType.Indexing: {
+      ({ bound_variables, num_variables, variable_map } = map_expression_arr(
+        expression.array,
+        variable_map,
+        num_variables,
+        bound_variables
+      ));
+      return map_expression_arr(
+        expression.index,
+        variable_map,
+        num_variables,
+        bound_variables
+      );
+    }
     case MiscType.Invocation: {
       ({ bound_variables, num_variables, variable_map } = map_expression_arr(
         expression.func,
@@ -171,11 +186,20 @@ const indexify_strings = (
     case VariableType.str:
     case VariableType.int:
     case VariableType.func:
+    case VariableType.arr:
     case VariableType.UNDEF:
       return {
         num_strings,
         string_map,
       };
+    case MiscType.Indexing: {
+      ({ string_map, num_strings } = indexify_strings_arr(
+        expression.array,
+        string_map,
+        num_strings
+      ));
+      return indexify_strings_arr(expression.index, string_map, num_strings);
+    }
     case MiscType.Invocation: {
       const ret = indexify_strings_arr(
         expression.func,

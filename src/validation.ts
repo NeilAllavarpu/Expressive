@@ -24,6 +24,7 @@ const typify = (expression: Expression, variables: Func["variables"]) => {
     case ValueType.Integer:
     case VariableType.str:
     case VariableType.int:
+    case VariableType.arr:
     case VariableType.func:
     case VariableType.UNDEF:
       break;
@@ -60,19 +61,19 @@ const typify = (expression: Expression, variables: Func["variables"]) => {
       break;
     }
     default: {
-      expression.arguments.forEach((expr) => {
-        typify_arr(expr, variables);
-      });
-      const expression_type = last_element(expression.arguments[0]).value_type;
-      if (
-        !breaking_operators.includes(expression.type) &&
-        !expression.arguments
-          .map(last_element)
-          .every(({ value_type }) => value_type === expression_type)
-      ) {
-        throw TypeError("ERROR: mismatch of types in operation!");
-      }
-      expression.value_type = expression_type;
+      // expression.arguments.forEach((expr) => {
+      //   typify_arr(expr, variables);
+      // });
+      // const expression_type = last_element(expression.arguments[0]).value_type;
+      // if (
+      //   !breaking_operators.includes(expression.type) &&
+      //   !expression.arguments
+      //     .map(last_element)
+      //     .every(({ value_type }) => value_type === expression_type)
+      // ) {
+      //   throw TypeError("ERROR: mismatch of types in operation!");
+      // }
+      // expression.value_type = expression_type;
     }
   }
 };

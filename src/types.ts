@@ -16,21 +16,25 @@ export enum OperatorType {
 }
 
 export enum SemanticType {
-  LeftParen = "(",
-  RightParen = ")",
+  Comma = ",",
   LeftBrace = "{",
   RightBrace = "}",
-  Comma = ",",
+  LeftBracket = "[",
+  RightBracket = "]",
+  LeftParen = "(",
+  RightParen = ")",
 }
 
 export enum ValueType {
+  Array = "array",
+  Function = "function",
   Integer = "integer",
   String = "string",
   Variable = "variable",
-  Function = "function",
 }
 
 export enum VariableType {
+  arr = "arr",
   int = "int",
   str = "str",
   func = "func",
@@ -38,6 +42,7 @@ export enum VariableType {
 }
 
 export enum MiscType {
+  Indexing = "indexing",
   Invocation = "invocation",
 }
 
@@ -81,6 +86,13 @@ export type StringExpression = {
   value_type: VariableType.str;
 };
 
+export type ArrayExpression = {
+  type: ValueType.Array;
+  arguments: Expression[][];
+  value_type: VariableType.arr;
+  used_registers?: Record<number, string>;
+};
+
 export type VariableExpression = {
   type: ValueType.Variable;
   register?: number;
@@ -89,10 +101,18 @@ export type VariableExpression = {
   value_type: VariableType;
 };
 
-export type TypeExpression = {
-  type: VariableType;
-  value_type: VariableType;
+export type ArrayTypeExpression = {
+  type: VariableType.arr;
+  value_type: VariableType.arr;
+  of: TypeExpression;
 };
+
+export type PrimitiveTypeExpression = {
+  type: Exclude<VariableType, VariableType.arr>;
+  value_type: Exclude<VariableType, VariableType.arr>;
+};
+
+export type TypeExpression = ArrayTypeExpression | PrimitiveTypeExpression;
 
 export type AssignmentExpression = {
   type: OperatorType.Assignment;
@@ -125,12 +145,19 @@ export type InvocationExpression = {
   used_registers?: Record<number, string>;
 };
 
+export type IndexingExpression = {
+  type: MiscType.Indexing;
+  array: Expression[];
+  index: Expression[];
+  value_type: VariableType;
+};
 type SpecificTypes = OperatorType.Assignment | OperatorType.Colon;
 
 export type ValueExpression =
   | IntegerExpression
   | StringExpression
-  | FunctionExpression;
+  | FunctionExpression
+  | ArrayExpression;
 
 export type BinaryExpression = {
   type: Exclude<OperatorType, SpecificTypes>;
@@ -145,6 +172,7 @@ export type Expression =
   | AssignmentExpression
   | DeclarationExpression
   | InvocationExpression
+  | IndexingExpression
   | BinaryExpression;
 
 export type VariableInfo = {

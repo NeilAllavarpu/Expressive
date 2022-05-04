@@ -37,9 +37,14 @@ const get_var_usage = (
     case VariableType.UNDEF:
     case VariableType.func:
     case VariableType.int:
+    case VariableType.arr:
     case VariableType.str:
     case OperatorType.Colon:
       return map;
+    case MiscType.Indexing: {
+      map = get_var_usage_arr(expression.array, map, [...curr_path, 0]);
+      return get_var_usage_arr(expression.index, map, [...curr_path, 1]);
+    }
     case MiscType.Invocation: {
       // TODO: reset everything
       map = get_var_usage_arr(expression.func, map, [...curr_path, 0]);
@@ -178,8 +183,7 @@ const allocate_args = (
 const slot_var = (
   expression: VariableExpression,
   vars: VariableUsage,
-  regs: RegisterMap,
-  is_assignment: boolean
+  regs: RegisterMap
 ) => {
   const reg = pick_register(regs, expression.label, vars);
   return {
@@ -218,6 +222,7 @@ const allocate = (
     case VariableType.func:
     case VariableType.int:
     case VariableType.str:
+    case VariableType.arr:
     case OperatorType.Colon:
       return { expression, regs };
     case ValueType.Function:
@@ -228,8 +233,19 @@ const allocate = (
         },
         regs,
       };
+    case MiscType.Indexing: {
+      const array = allocate_arr(expression.array, vars, regs);
+      const index = allocate_arr(expression.index, vars, array.regs);
+      return {
+        expression: {
+          ...expression,
+          array: array.expressions,
+          index: index.expressions,
+        },
+        regs: index.regs,
+      };
+    }
     case MiscType.Invocation: {
-      // TODO: reset everything
       const args = allocate_args(expression.arguments, vars, regs);
       const func = allocate_arr(expression.func, vars, args.regs);
       return {
@@ -242,11 +258,22 @@ const allocate = (
         regs: func.regs,
       };
     }
+    case ValueType.Array: {
+      const args = allocate_args(expression.arguments, vars, regs);
+      return {
+        expression: {
+          ...expression,
+          arguments: args.sequences,
+          used_registers: get_used_regs(args.regs),
+        },
+        regs: args.regs,
+      };
+    }
     case ValueType.Variable:
-      return slot_var(expression, vars, regs, false);
+      return slot_var(expression, vars, regs);
     case OperatorType.Assignment: {
       const value = allocate_arr(expression.value, vars, regs);
-      const lhs_var = slot_var(expression.variable, vars, value.regs, true);
+      const lhs_var = slot_var(expression.variable, vars, value.regs);
 
       return {
         expression: {
