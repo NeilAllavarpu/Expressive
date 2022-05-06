@@ -355,5 +355,6 @@ export const register_allocate = (func: Func) => {
   return {
     ...func,
     body: allocation.expressions,
+    used_registers: allocation.regs,
   };
 };

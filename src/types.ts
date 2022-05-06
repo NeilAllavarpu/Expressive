@@ -220,6 +220,7 @@ export type Func = {
   variables: Record<string, VariableInfo>;
   num_variables: number;
   bound: string[];
+  used_registers?: RegisterMap;
   parameters: VariableExpression[];
 };
 
