@@ -272,23 +272,21 @@ const assemble_expression = (
         assemble_subexpression_arr(expression.arguments[0], false) +
         assemble_subexpression_arr(expression.arguments[1], false);
       break;
-    case OperatorType.And: {
-      const i = get_unique_int();
-      string = dedent`
-        ${assemble_subexpression_arr(expression.arguments[0], false).trimEnd()}
-        cbz  x4, and${i}
-        ${assemble_subexpression_arr(expression.arguments[1], false).trimEnd()}
-        and${i}:\n
-      `;
-      break;
-    }
+    case OperatorType.And:
     case OperatorType.Or: {
+      if (expression.used_registers === undefined) {
+        throw Error("failed to reg alloc");
+      }
       const i = get_unique_int();
       string = dedent`
         ${assemble_subexpression_arr(expression.arguments[0], false).trimEnd()}
-        cbnz  x4, or${i}
-        ${assemble_subexpression_arr(expression.arguments[1], false).trimEnd()}
-        or${i}:\n
+        ${
+          expression.type === OperatorType.And ? "cbz" : "cbnz"
+        }  x4, short_circuit${i}
+        ${assemble_subexpression_arr(expression.arguments[1]).trimEnd()}
+        ${save_all(expression.used_registers)}
+        ${pop(4)}
+        short_circuit${i}:\n
       `;
       break;
     }

@@ -280,6 +280,19 @@ const allocate = (
         regs: func.regs,
       };
     }
+    case OperatorType.And:
+    case OperatorType.Or: {
+      const lhs = allocate_arr(expression.arguments[0], vars, regs);
+      const rhs = allocate_arr(expression.arguments[1], vars, lhs.regs);
+      return {
+        expression: {
+          ...expression,
+          arguments: [lhs.expressions, rhs.expressions],
+          used_registers: get_used_regs(rhs.regs),
+        },
+        regs: lhs.regs,
+      };
+    }
     case ValueType.Array: {
       const args = allocate_args(expression.arguments, vars, regs);
       return {

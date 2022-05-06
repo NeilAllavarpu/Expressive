@@ -170,9 +170,18 @@ export type SpreadExpression = {
 };
 
 type SpecificTypes =
+  | OperatorType.And
   | OperatorType.Assignment
   | OperatorType.Colon
-  | OperatorType.IndexRange;
+  | OperatorType.IndexRange
+  | OperatorType.Or;
+
+export type ShortCircuitExpression = {
+  type: OperatorType.And | OperatorType.Or;
+  arguments: Expression[][];
+  value_type: VariableType;
+  used_registers?: Record<number, string>;
+};
 
 export type ValueExpression =
   | IntegerExpression
@@ -195,6 +204,7 @@ export type Expression =
   | InvocationExpression
   | IndexingExpression
   | IndexingRangeExpression
+  | ShortCircuitExpression
   | SpreadExpression
   | BinaryExpression;
 
