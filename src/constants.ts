@@ -60,6 +60,11 @@ export const standard_vars: Record<string, VariableInfo> = {
     index: -1,
     type: VariableType.func,
   },
+  read_int: {
+    captured: true,
+    index: -3,
+    type: VariableType.func,
+  },
 };
 
 export const breaking_operators = [
