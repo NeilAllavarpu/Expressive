@@ -1,11 +1,14 @@
 import { Expression, Func, MiscType, OperatorType } from "./types";
 
-export const apply_tail_recursion_inner = (expr: Expression) => {
+export const apply_tail_recursion_inner = (
+  expr: Expression,
+  is_tail_call = true
+) => {
   if (expr.type === MiscType.Invocation) {
-    expr.is_tail_call = true;
+    expr.is_tail_call = is_tail_call;
   }
   if (expr.type === OperatorType.And || expr.type === OperatorType.Or) {
-    apply_tail_recursion_inner(expr.arguments[0].at(-1) as Expression);
+    apply_tail_recursion_inner(expr.arguments[0].at(-1) as Expression, false);
     apply_tail_recursion_inner(expr.arguments[1].at(-1) as Expression);
   }
 };

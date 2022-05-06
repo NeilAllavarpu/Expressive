@@ -1,7 +1,7 @@
 import dedent from "ts-dedent";
 import { assemble_expression_arr } from "./assemble_expression";
 import { standard_vars } from "./constants";
-import { Func, Prog } from "./types";
+import { Func, Prog, RegisterMap } from "./types";
 
 const var_size = 8;
 
@@ -115,6 +115,29 @@ const setup_main = ({ variables, bound }: Func) => {
   `;
 };
 
+const save_var = (
+  register: number,
+  label: string,
+  variable_map: Func["variables"]
+) => {
+  const { captured, index } = variable_map[label];
+  const offset = to_offset(index);
+  if (captured) {
+    return dedent`
+        ldr  x0, [x29, #${offset}]
+        str  x${register}, [x0]\n
+      `;
+  } else {
+    return `str  x${register}, [x29, #${offset}]\n`;
+  }
+};
+
+const save_captured = (regs: RegisterMap, variable_map: Func["variables"]) =>
+  Object.entries(regs)
+    .filter(([, label]) => label !== null && variable_map[label].captured)
+    .map(([reg, label]) => save_var(Number(reg), label as string, variable_map))
+    .join("");
+
 const assemble_function = (
   func: Func,
   function_map: Record<number, Func>
@@ -135,6 +158,7 @@ const assemble_function = (
     function_map,
     false
   ).trimEnd()}
+  ${save_captured(func.used_registers as RegisterMap, func.variables)}
   mov  sp, x29
   ldp  x29, x30, [sp], #16
   ret\n
