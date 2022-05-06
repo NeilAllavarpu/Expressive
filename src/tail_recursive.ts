@@ -1,19 +1,17 @@
 import { Expression, Func, MiscType, OperatorType } from "./types";
-import { last_element } from "./utils";
 
-export const get_last_computation = (expr: Expression): Expression => {
-  if (expr.type === OperatorType.And) {
-    return get_last_computation(last_element(expr.arguments[1]));
+export const apply_tail_recursion_inner = (expr: Expression) => {
+  if (expr.type === MiscType.Invocation) {
+    expr.is_tail_call = true;
   }
-
-  return expr;
+  if (expr.type === OperatorType.And || expr.type === OperatorType.Or) {
+    apply_tail_recursion_inner(expr.arguments[0].at(-1) as Expression);
+    apply_tail_recursion_inner(expr.arguments[1].at(-1) as Expression);
+  }
 };
 
 export const apply_tail_recursion = (func: Func) => {
-  const return_expression = get_last_computation(
-    func.body[func.body.length - 1]
-  );
-  if (return_expression.type === MiscType.Invocation) {
-    return_expression.is_tail_call = true;
+  if (func.body.length > 0) {
+    apply_tail_recursion_inner(func.body.at(-1) as Expression);
   }
 };
