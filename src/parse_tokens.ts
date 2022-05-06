@@ -48,7 +48,7 @@ const parse_expression_list = (
     return {
       args,
       contexts,
-      index,
+      index: index + 1,
     };
   }
   while (tokens[index].type !== closing_token) {
@@ -210,23 +210,36 @@ export const parse_tokens = (
         });
       index = end_param_index + 1;
       if (
-        index >= tokens.length ||
+        index >= tokens.length - 1 ||
         tokens[index].type !== SemanticType.LeftBrace
       ) {
         console.error("ERROR: Missing function body");
         exit(1);
       }
-      const parsed = parse_tokens(tokens, index + 1);
-      index = parsed.index;
-      contexts = [
-        ...contexts,
-        {
-          body: parsed.body,
-          contexts: parsed.contexts,
-          index,
-          parameters,
-        },
-      ];
+      if (tokens[index + 1].type === SemanticType.RightBrace) {
+        index += 1;
+        contexts = [
+          ...contexts,
+          {
+            body: [],
+            contexts: [],
+            index,
+            parameters,
+          },
+        ];
+      } else {
+        const parsed = parse_tokens(tokens, index + 1);
+        index = parsed.index;
+        contexts = [
+          ...contexts,
+          {
+            body: parsed.body,
+            contexts: parsed.contexts,
+            index,
+            parameters,
+          },
+        ];
+      }
       if (
         index >= tokens.length ||
         tokens[index].type !== SemanticType.RightBrace
