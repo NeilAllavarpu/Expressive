@@ -273,6 +273,7 @@ export const parse_tokens = (
         SemanticType.RightParen
       );
       index = arg_list.index + 1;
+      contexts = contexts.concat(arg_list.contexts);
       lhs = [
         {
           arguments: arg_list.args,
