@@ -45,6 +45,14 @@ const get_var_usage = (
       map = get_var_usage_arr(expression.array, map, [...curr_path, 0]);
       return get_var_usage_arr(expression.index, map, [...curr_path, 1]);
     }
+    case OperatorType.IndexRange: {
+      map = get_var_usage_arr(expression.array, map, [...curr_path, 0]);
+      map = get_var_usage_arr(expression.index_lo, map, [...curr_path, 1]);
+      return get_var_usage_arr(expression.index_hi, map, [...curr_path, 2]);
+    }
+    case MiscType.Spread: {
+      return get_var_usage_arr(expression.array, map, curr_path);
+    }
     case MiscType.Invocation: {
       // TODO: reset everything
       map = get_var_usage_arr(expression.func, map, [...curr_path, 0]);
@@ -245,6 +253,20 @@ const allocate = (
         regs: index.regs,
       };
     }
+    case OperatorType.IndexRange: {
+      const array = allocate_arr(expression.array, vars, regs);
+      const index_lo = allocate_arr(expression.index_lo, vars, array.regs);
+      const index_hi = allocate_arr(expression.index_hi, vars, array.regs);
+      return {
+        expression: {
+          ...expression,
+          array: array.expressions,
+          index_hi: index_hi.expressions,
+          index_lo: index_lo.expressions,
+        },
+        regs: index_hi.regs,
+      };
+    }
     case MiscType.Invocation: {
       const args = allocate_args(expression.arguments, vars, regs);
       const func = allocate_arr(expression.func, vars, args.regs);
@@ -267,6 +289,16 @@ const allocate = (
           used_registers: get_used_regs(args.regs),
         },
         regs: args.regs,
+      };
+    }
+    case MiscType.Spread: {
+      const array = allocate_arr(expression.array, vars, regs);
+      return {
+        expression: {
+          ...expression,
+          array: array.expressions,
+        },
+        regs: array.regs,
       };
     }
     case ValueType.Variable:
@@ -299,15 +331,13 @@ const allocate = (
 
 export const register_allocate = (func: Func) => {
   const usage = get_var_usage_arr(func.body);
-  const register_assignments = range(7, 15)
-    .concat(range(19, 28))
-    .reduce(
-      (map, index) => ({
-        ...map,
-        [index]: null,
-      }),
-      {}
-    );
+  const register_assignments = range(19, 28).reduce(
+    (map, index) => ({
+      ...map,
+      [index]: null,
+    }),
+    {}
+  );
   const allocation = allocate_arr(func.body, usage, register_assignments);
   return {
     ...func,

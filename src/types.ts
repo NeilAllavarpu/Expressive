@@ -9,6 +9,7 @@ export enum OperatorType {
   And = "&&",
   Assignment = "=",
   Colon = ":",
+  IndexRange = "..",
   Mult = "*",
   Or = "||",
   Semicolon = ";",
@@ -23,6 +24,7 @@ export enum SemanticType {
   RightBracket = "]",
   LeftParen = "(",
   RightParen = ")",
+  Ellipsis = "...",
 }
 
 export enum ValueType {
@@ -44,6 +46,7 @@ export enum VariableType {
 export enum MiscType {
   Indexing = "indexing",
   Invocation = "invocation",
+  Spread = "spread",
 }
 
 export type TokenType = OperatorType | SemanticType | ValueType | VariableType;
@@ -151,7 +154,25 @@ export type IndexingExpression = {
   index: Expression[];
   value_type: VariableType;
 };
-type SpecificTypes = OperatorType.Assignment | OperatorType.Colon;
+
+export type IndexingRangeExpression = {
+  type: OperatorType.IndexRange;
+  array: Expression[];
+  index_lo: Expression[];
+  index_hi: Expression[];
+  value_type: VariableType;
+};
+
+export type SpreadExpression = {
+  type: MiscType.Spread;
+  array: Expression[];
+  value_type: VariableType;
+};
+
+type SpecificTypes =
+  | OperatorType.Assignment
+  | OperatorType.Colon
+  | OperatorType.IndexRange;
 
 export type ValueExpression =
   | IntegerExpression
@@ -173,6 +194,8 @@ export type Expression =
   | DeclarationExpression
   | InvocationExpression
   | IndexingExpression
+  | IndexingRangeExpression
+  | SpreadExpression
   | BinaryExpression;
 
 export type VariableInfo = {

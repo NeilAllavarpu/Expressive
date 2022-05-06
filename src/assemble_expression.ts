@@ -17,6 +17,15 @@ const get_unique_int = (() => {
   return () => x++;
 })();
 
+const round_up_pwr_2 = (n: number) => {
+  let ans = 1;
+  while (n !== 0) {
+    ans <<= 1;
+    n >>= 1;
+  }
+  return ans;
+};
+
 const pop = (register = 4) => `ldr  x${register}, [sp], #16\n`;
 const push = (register = 4) => `str  x${register}, [sp, #-16]!\n`;
 
@@ -147,29 +156,94 @@ const assemble_expression = (
       break;
     }
     case ValueType.Array: {
-      if (expression.used_registers === undefined) {
+      const { used_registers } = expression;
+      if (used_registers === undefined) {
         throw TypeError("beep booop");
       }
       const { length } = expression.arguments;
+      const spread_elems = expression.arguments.filter(
+        (expression) => expression.at(-1)?.type === MiscType.Spread
+      );
       string = dedent`
-        ${save_all(expression.used_registers)}
-        mov  x19, x0
-        mov  x0, #${(length + 1) * 8}
+        ${push(0)}
+        ${push(1)}
+        ${push(2)}
+        mov  x0, #${round_up_pwr_2(length + 1) * 8}
         bl   malloc
+        ${push(0)}
         mov  x4, #${length}
-        str  x4, [x0]
+        str  x4, [x0], #8
+        ${push(0)}
         ${expression.arguments
-          .map((expression) => assemble_subexpression_arr(expression, false))
-          .reduce(
-            (asm, var_asm, i) =>
-              asm + var_asm + `str  x4, [x0, #${(i + 1) * 8}]\n`,
-            ""
-          )}
-        mov  x4, x0
-        mov  x0, x19
-        ${load_all(expression.used_registers)}
+          .map((expression) => {
+            const value = expression.at(-1);
+            if (value?.type !== MiscType.Spread) {
+              return dedent`
+                ${assemble_subexpression_arr(expression, false)}
+                ldr  x5, [sp]
+                str  x4, [x5]
+                add  x5, x5, #8
+                str  x5, [sp]
+              `;
+            }
+            const i = get_unique_int();
+            // x6 = indexing
+            // x0 = arr pointer
+            return dedent`
+              ${assemble_subexpression_arr(expression.slice(0, -1), false)}
+              ${assemble_subexpression_arr(value.array, false)}
+              ldr  x0, [sp, #16]
+              ldr  x7, [x4]
+              ldr  x8, [x0]
+              clz  w9, w8
+              add  x8, x8, x7
+              sub  x8, x8, #1
+              str  x8, [x0]
+              clz  w10, w8
+              cmp  w10, w9
+              b.eq continue_alloc${i}
+
+              // round w8 up to nearest power of 2
+              mov  w1, #0x80000000
+              clz  w5, w8
+              sub  w5, w5, #4
+              lsr  w1, w1, w5
+
+              ${push(4)}
+              bl   realloc
+              ${pop(4)}
+              str  x0, [sp, #16]
+
+              continue_alloc${i}:
+              ldr  x0, [sp]
+              add  x1, x4, #8
+              ldr  x2, [x4]
+              lsl  x2, x2, #3
+              add  x5, x0, x2
+              str  x5, [sp]
+              bl   memcpy
+            `;
+          })
+          .join("\n")}
+        ldr  x4, [sp, #16]
+        add  sp, sp, #32
+        ${pop(2)}
+        ${pop(1)}
+        ${pop(0)}
       `;
       break;
+    }
+    case MiscType.Spread: {
+      throw TypeError("shoul not reach thi");
+      // string = dedent`
+      //   ${assemble_subexpression_arr(expression.array).trimEnd()}
+      //   ${assemble_subexpression_arr(expression.index, false).trimEnd()}
+      //   ${pop(5)}
+      //   lsl  x4, x4, #3
+      //   add  x4, x4, #8
+      //   ldr  x4, [x5, x4]\n
+      // `;
+      // break;
     }
     case VariableType.int:
     case VariableType.str:
@@ -226,11 +300,9 @@ const assemble_expression = (
           throw new TypeError("Register record saving failed");
         }
         string = dedent`
-          mov  x5, x0
+          ${push(0).trimEnd()}
           mov  x0, #${8 * (bound.length + 1)}
-          ${save_all(expression.used_registers)}
           bl   malloc
-          ${load_all(expression.used_registers)}
           adrp x4, function${expression.func}
           add  x4, x4, #:lo12:function${expression.func}
           str  x4, [x0]
@@ -243,7 +315,7 @@ const assemble_expression = (
             )
             .join("\n")}
           mov  x4, x0
-          mov  x0, x5\n
+          ${pop(0)}
         `;
       }
       break;
@@ -287,6 +359,41 @@ const assemble_expression = (
         lsl  x4, x4, #3
         add  x4, x4, #8
         ldr  x4, [x5, x4]\n
+      `;
+      break;
+    }
+    case OperatorType.IndexRange: {
+      string = dedent`
+        ${push(0)}
+        ${push(1)}
+        ${push(2)}
+        ${assemble_subexpression_arr(expression.array).trimEnd()}
+        ${assemble_subexpression_arr(expression.index_lo).trimEnd()}
+        ${assemble_subexpression_arr(expression.index_hi, false).trimEnd()}
+        ldr  x5, [sp]
+        sub  x4, x4, x5
+        add  x4, x4, #1
+        ${push(4)}
+        add  x0, x4, #1
+        lsl  x0, x0, #3
+        bl   malloc // allocating new arr
+        ${pop(4)} // len of range
+        ${pop(5)} // start of range
+        ${pop(1)} // arr to index
+        str  x4, [x0], #8
+        lsl  x2, x4, #3
+
+        add  x5, x5, #1 // shift start of mem region
+        lsl  x5, x5, #3
+        add  x1, x1, x5
+
+        bl   memcpy
+
+        sub  x4, x0, #8 // start of array
+
+        ${pop(2)}
+        ${pop(1)}
+        ${pop(0)}\n
       `;
       break;
     }

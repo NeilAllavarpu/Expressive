@@ -42,19 +42,28 @@ export const OperatorMap: Record<OperatorType, Operator> = {
     operator: OperatorType.Or,
     right_bind: 6,
   },
+  [OperatorType.IndexRange]: {
+    left_bind: 3,
+    operator: OperatorType.IndexRange,
+    right_bind: 4,
+  },
 };
 
 export const standard_vars: Record<string, VariableInfo> = {
+  length: {
+    captured: true,
+    index: -2,
+    type: VariableType.func,
+  },
   print: {
     captured: true,
     index: -1,
     type: VariableType.func,
   },
-  return: {
-    captured: true,
-    index: -2,
-    type: VariableType.func,
-  },
 };
 
-export const breaking_operators = [OperatorType.Semicolon, OperatorType.And];
+export const breaking_operators = [
+  OperatorType.Semicolon,
+  OperatorType.And,
+  OperatorType.Or,
+];

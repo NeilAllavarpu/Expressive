@@ -115,6 +115,34 @@ const map_expression = (
         bound_variables
       );
     }
+    case OperatorType.IndexRange: {
+      ({ bound_variables, num_variables, variable_map } = map_expression_arr(
+        expression.array,
+        variable_map,
+        num_variables,
+        bound_variables
+      ));
+      ({ bound_variables, num_variables, variable_map } = map_expression_arr(
+        expression.index_lo,
+        variable_map,
+        num_variables,
+        bound_variables
+      ));
+      return map_expression_arr(
+        expression.index_hi,
+        variable_map,
+        num_variables,
+        bound_variables
+      );
+    }
+    case MiscType.Spread: {
+      return map_expression_arr(
+        expression.array,
+        variable_map,
+        num_variables,
+        bound_variables
+      );
+    }
     case MiscType.Invocation: {
       ({ bound_variables, num_variables, variable_map } = map_expression_arr(
         expression.func,
@@ -200,6 +228,22 @@ const indexify_strings = (
       ));
       return indexify_strings_arr(expression.index, string_map, num_strings);
     }
+    case OperatorType.IndexRange: {
+      ({ string_map, num_strings } = indexify_strings_arr(
+        expression.array,
+        string_map,
+        num_strings
+      ));
+      ({ string_map, num_strings } = indexify_strings_arr(
+        expression.index_lo,
+        string_map,
+        num_strings
+      ));
+      return indexify_strings_arr(expression.index_hi, string_map, num_strings);
+    }
+    case MiscType.Spread: {
+      return indexify_strings_arr(expression.array, string_map, num_strings);
+    }
     case MiscType.Invocation: {
       const ret = indexify_strings_arr(
         expression.func,
@@ -282,6 +326,14 @@ const apply_bound = (
   ];
 };
 
+const unpack_all_contexts = ({
+  contexts,
+  body,
+}: ParseContext): Expression[][] => [
+  ...contexts.map((subcontext) => unpack_all_contexts(subcontext)).flat(),
+  body,
+];
+
 export const parse = (tokens: Token[]): Prog => {
   const parsed = parse_tokens(tokens);
   const main = {
@@ -293,10 +345,7 @@ export const parse = (tokens: Token[]): Prog => {
 
   const functions: Func[] = apply_bound(parse_tree(main), standard_vars);
 
-  const { string_map } = [
-    ...parsed.contexts.map(({ body }) => body),
-    parsed.body,
-  ].reduce(
+  const { string_map } = unpack_all_contexts(parsed).reduce(
     ({ string_map, num_strings }, expression) =>
       indexify_strings_arr(expression, string_map, num_strings),
     { num_strings: 0, string_map: {} }

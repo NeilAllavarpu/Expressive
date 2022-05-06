@@ -139,6 +139,19 @@ export const parse_tokens = (
         lhs = [type_expression];
       }
       break;
+    case SemanticType.Ellipsis: {
+      const parsed = parse_tokens(tokens, index + 1);
+      lhs = [
+        {
+          array: parsed.body,
+          type: MiscType.Spread,
+          value_type: VariableType.UNDEF,
+        },
+      ];
+      index = parsed.index - 1;
+      contexts = contexts.concat(parsed.contexts);
+      break;
+    }
     case SemanticType.LeftBracket:
       {
         const arg_list = parse_expression_list(
@@ -262,16 +275,30 @@ export const parse_tokens = (
       if (tokens[index].type !== SemanticType.RightBracket) {
         throw SyntaxError("Missing closing bracket for array indexing");
       }
+      if (parse_result.body.length === 0) {
+        throw SyntaxError("Empty array index");
+      }
       index = index + 1;
       contexts = contexts.concat(parse_result.contexts);
-      lhs = [
-        {
-          array: lhs,
-          index: parse_result.body,
-          type: MiscType.Indexing,
-          value_type: VariableType.UNDEF,
-        },
-      ];
+      const final_value = parse_result.body.at(-1);
+      if (final_value?.type === OperatorType.IndexRange) {
+        lhs = [
+          ...parse_result.body.slice(0, -1),
+          {
+            ...final_value,
+            array: lhs,
+          },
+        ];
+      } else {
+        lhs = [
+          {
+            array: lhs,
+            index: parse_result.body,
+            type: MiscType.Indexing,
+            value_type: VariableType.UNDEF,
+          },
+        ];
+      }
     } else {
       const operator = OperatorMap[tokens[index].type as OperatorType];
       if (operator === undefined) {
@@ -331,6 +358,18 @@ export const parse_tokens = (
         }
         case OperatorType.Semicolon: {
           lhs = lhs.concat(parse_result.body);
+          break;
+        }
+        case OperatorType.IndexRange: {
+          lhs = [
+            {
+              array: [],
+              index_hi: parse_result.body,
+              index_lo: lhs,
+              type: OperatorType.IndexRange,
+              value_type: VariableType.UNDEF,
+            },
+          ];
           break;
         }
         default:

@@ -24,7 +24,6 @@ const typify = (expression: Expression, variables: Func["variables"]) => {
     case ValueType.Integer:
     case VariableType.str:
     case VariableType.int:
-    case VariableType.arr:
     case VariableType.func:
     case VariableType.UNDEF:
       break;
@@ -41,9 +40,9 @@ const typify = (expression: Expression, variables: Func["variables"]) => {
         expression.variable.value_type !==
         last_element(expression.value).value_type
       ) {
-        throw TypeError(
-          "Type of variable does not match type of expression in assignment!"
-        );
+        // throw TypeError(
+        //   "Type of variable does not match type of expression in assignment!"
+        // );
       }
       expression.value_type = expression.variable.value_type;
       break;
