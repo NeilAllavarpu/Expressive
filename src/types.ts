@@ -9,11 +9,22 @@ export enum OperatorType {
   And = "&&",
   Assignment = "=",
   Colon = ":",
+  Division = "/",
+  Equal = "==",
+  Greater = ">",
+  GreaterEqual = ">=",
   IndexRange = "..",
+  LeftShift = "<<",
+  Less = "<",
+  LessEqual = "<=",
+  Modulus = "%",
   Mult = "*",
   Or = "||",
+  RightShiftLogical = ">>",
+  RightShiftArithmetic = ">>>",
   Semicolon = ";",
   Subtraction = "-",
+  Unequal = "!=",
 }
 
 export enum SemanticType {
@@ -168,6 +179,14 @@ export type SpreadExpression = {
   array: Expression[];
   value_type: VariableType;
 };
+
+export type ComparisonType =
+  | OperatorType.Equal
+  | OperatorType.Unequal
+  | OperatorType.Greater
+  | OperatorType.GreaterEqual
+  | OperatorType.Less
+  | OperatorType.LessEqual;
 
 type SpecificTypes =
   | OperatorType.And

@@ -52,7 +52,7 @@ const typify = (expression: Expression, variables: Func["variables"]) => {
     case MiscType.Invocation: {
       typify_arr(expression.func, variables);
       if (last_element(expression.func).value_type !== VariableType.func) {
-        throw TypeError("Non-function attempting to be invoked!");
+        // throw TypeError("Non-function attempting to be invoked!");
       }
       expression.arguments.forEach((expr) => {
         typify_arr(expr, variables);

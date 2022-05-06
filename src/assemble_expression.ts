@@ -1,6 +1,7 @@
 import { exit } from "process";
 import dedent from "ts-dedent";
 import { to_offset } from "./assemble";
+import { ComparisonHints } from "./constants";
 import {
   Expression,
   Func,
@@ -413,6 +414,47 @@ const assemble_expression = (
         sub  x4, x4, x5\n
       `;
       break;
+    case OperatorType.Division:
+      string = dedent`
+        ${load_args(expression.arguments)}
+        sdiv  x4, x4, x5\n
+      `;
+      break;
+    case OperatorType.Modulus:
+      string = dedent`
+        ${load_args(expression.arguments)}
+        sdiv  x6, x4, x5\n
+        smsubl x4, w6, w5, x4\n
+      `;
+      break;
+    case OperatorType.LeftShift:
+      string = dedent`
+        ${load_args(expression.arguments)}
+        lsl    x4, x4, x5\n
+      `;
+      break;
+    case OperatorType.RightShiftArithmetic:
+      string = dedent`
+        ${load_args(expression.arguments)}
+        asr    x4, x4, x5\n
+      `;
+      break;
+    case OperatorType.RightShiftLogical:
+      string = dedent`
+        ${load_args(expression.arguments)}
+        lsr    x4, x4, x5\n
+      `;
+      break;
+    default: {
+      if (!Object.keys(ComparisonHints).includes(expression.type)) {
+        throw TypeError(`Unhandled expression type ${expression.type}`);
+      }
+      string = dedent`
+        ${load_args(expression.arguments)}
+        cmp  x4, x5
+        cset x4, ${ComparisonHints[expression.type]}\n
+      `;
+    }
   }
   if (push_result) {
     string += push();
