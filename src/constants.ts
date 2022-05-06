@@ -1,4 +1,4 @@
-import { Operator, VariableInfo, VariableType } from "./types";
+import { ComparisonType, Operator, VariableInfo, VariableType } from "./types";
 import { OperatorType } from "./types";
 
 export const OperatorMap: Record<OperatorType, Operator> = {
@@ -16,6 +16,31 @@ export const OperatorMap: Record<OperatorType, Operator> = {
     left_bind: 25,
     operator: OperatorType.Mult,
     right_bind: 26,
+  },
+  [OperatorType.Division]: {
+    left_bind: 25,
+    operator: OperatorType.Division,
+    right_bind: 26,
+  },
+  [OperatorType.Modulus]: {
+    left_bind: 25,
+    operator: OperatorType.Modulus,
+    right_bind: 26,
+  },
+  [OperatorType.LeftShift]: {
+    left_bind: 21,
+    operator: OperatorType.LeftShift,
+    right_bind: 22,
+  },
+  [OperatorType.RightShiftArithmetic]: {
+    left_bind: 21,
+    operator: OperatorType.RightShiftArithmetic,
+    right_bind: 22,
+  },
+  [OperatorType.RightShiftLogical]: {
+    left_bind: 21,
+    operator: OperatorType.RightShiftLogical,
+    right_bind: 22,
   },
   [OperatorType.Colon]: {
     left_bind: 30,
@@ -47,6 +72,36 @@ export const OperatorMap: Record<OperatorType, Operator> = {
     operator: OperatorType.IndexRange,
     right_bind: 4,
   },
+  [OperatorType.Equal]: {
+    left_bind: 7,
+    operator: OperatorType.Equal,
+    right_bind: 8,
+  },
+  [OperatorType.Unequal]: {
+    left_bind: 7,
+    operator: OperatorType.Unequal,
+    right_bind: 8,
+  },
+  [OperatorType.Greater]: {
+    left_bind: 7,
+    operator: OperatorType.Greater,
+    right_bind: 8,
+  },
+  [OperatorType.GreaterEqual]: {
+    left_bind: 7,
+    operator: OperatorType.GreaterEqual,
+    right_bind: 8,
+  },
+  [OperatorType.Less]: {
+    left_bind: 7,
+    operator: OperatorType.Less,
+    right_bind: 8,
+  },
+  [OperatorType.LessEqual]: {
+    left_bind: 7,
+    operator: OperatorType.LessEqual,
+    right_bind: 8,
+  },
 };
 
 export const standard_vars: Record<string, VariableInfo> = {
@@ -72,3 +127,12 @@ export const breaking_operators = [
   OperatorType.And,
   OperatorType.Or,
 ];
+
+export const ComparisonHints: Record<ComparisonType, string> = {
+  [OperatorType.Equal]: "eq",
+  [OperatorType.Unequal]: "ne",
+  [OperatorType.Greater]: "gt",
+  [OperatorType.GreaterEqual]: "ge",
+  [OperatorType.Less]: "lt",
+  [OperatorType.LessEqual]: "le",
+};
