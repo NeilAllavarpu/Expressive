@@ -288,14 +288,14 @@ const parse_tree = (tree: ParseContext & Context): FuncTree => {
   const { num_variables, variable_map, bound_variables } = map_context(tree);
 
   const additional_bound = subcontexts
-    .map(({ bound }) => bound)
-    .flat()
-    .filter(
-      (label) => !(label in variable_map || bound_variables.includes(label))
-    );
+    .flatMap(({ bound }) => bound)
+    .filter((label) => !(label in variable_map));
+  const filtered = additional_bound
+    .concat(bound_variables)
+    .filter((label, i, arr) => i === arr.indexOf(label));
   const f: Func = {
     ...tree,
-    bound: bound_variables.concat(additional_bound),
+    bound: filtered,
     num_variables,
     variables: variable_map,
   };
