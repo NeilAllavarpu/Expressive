@@ -4,7 +4,7 @@
     "sourceMap": true,
     "strict": true,
     "strictNullChecks": true,
-    "target": "ES2018",
+    "target": "ESNext",
     "moduleResolution":"Node",
     "module": "commonjs",
   },

@@ -67,7 +67,7 @@ All binaryoperators except for assignment are left-to-right associative.
 * `length(array)`. Returns the length of an array
 
 ## Running the compiler
-* Install dependencies: `npm i`
+* Install required dependencies: `npm i --omit=dev`
 * Build the Typescript files: `npm run build`
 * Execute the compiler: `npm run execute <input_file> [<output_file]`
   * If no output file is specified, the generated assembly is printed to standard output
