@@ -1,0 +1,26 @@
+if_else:func;
+if_else={condition if_block else_block}{
+  (condition != 0 && if_block()) ||
+  (condition == 0 && else_block())
+};
+
+while:func;
+while={condition body}{
+  condition() && (
+    body();
+    while(condition, body)
+  )
+};
+
+x:int;
+x=13;
+
+if_else(x % 2 == 0, {}{
+    print("x is even\n")
+  }, {}{
+    print("x is odd\n")
+  });
+
+print("x should be 13: %d\n", x);
+while({}{x > 7}, {}{x = x - 1});
+print("x should be 7: %d\n", x)

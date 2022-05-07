@@ -1,0 +1,28 @@
+makeCounter:func;
+makeCounter={}{
+  x: int;
+  x = 0;
+  {}{
+    x = x + 1;
+    x
+  }
+};
+c:func;
+c = makeCounter();
+c();
+c();
+c();
+c();
+d:func;
+d = makeCounter();
+d();
+d();
+d();
+d();
+d();
+d();
+d();
+d();
+d();
+print("c should be 5 and is %d\n", c());
+print("d should be 10 and is %d\n", d())

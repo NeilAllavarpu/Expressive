@@ -1,0 +1,40 @@
+printArray:func;
+printArray={array}{
+  print("[");
+  print_array_inner:func;
+  print_array_inner={array}{
+    end:int;
+    end=length(array) - 1;
+    end > 1 && (
+      print("%d, ", array[0]);
+      print_array_inner(array[1..end])
+    ) || (
+      print("%d", array[0])
+    )
+  };
+
+  length(array) > 0 && print_array_inner(array);
+
+  print("]\n")
+};
+fibonacci:int[];
+fibonacci=[0, 1];
+
+threshold:int;
+print("Enter a number to generate fibonacci: ");
+threshold=read_int();
+add_fibonacci: func;
+
+add_fibonacci={array}{
+  len:int;
+  len=length(array);
+  out:int;
+  out = array[len-1] + array[len - 2];
+  array = [...array, out];
+  out <= threshold && (
+    add_fibonacci(array)
+  ) || array
+};
+
+print("Generating fibonacci up to %d...\n", threshold);
+printArray(add_fibonacci(fibonacci))

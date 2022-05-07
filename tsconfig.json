@@ -4,11 +4,11 @@
     "sourceMap": true,
     "strict": true,
     "strictNullChecks": true,
-    "exactOptionalPropertyTypes": true
+    "target": "ES2018",
+    "moduleResolution":"Node",
+    "module": "commonjs",
   },
-  "include": [
-    "./src/**/*.ts"
-  ],
+  "include": ["./src/**/*.ts"],
   "lib": [
     "node"
   ]
